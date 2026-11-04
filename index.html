@@ -408,6 +408,7 @@ function renderStaff(){
   const box=$('#staff-box');if(!box||!CLOUD||ROLE!=='admin')return;
   const cnt=(arr,id)=>arr.filter(x=>x.ownerId===id).length;
   const pend=S.pending.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  const nv=$('#nav-staff span');if(nv)nv.textContent=pend.length?'Duyệt ('+pend.length+')':'Nhân viên';
   let h='<section class="card"><h2>Chờ duyệt ('+pend.length+')</h2>'+(pend.length?pend.map(p=>'<div class="srow"><div class="c-main"><div class="c-name">'+esc(p.name||'(chưa có tên)')+'</div><div class="qc-sub">'+esc(p.email||'')+(p.phone?' · '+esc(p.phone):'')+'</div></div><div class="acts"><button type="button" class="btn sm primary" data-act="st-approve" data-id="'+esc(p.id)+'">Duyệt</button><button type="button" class="btn sm danger" data-act="st-reject" data-id="'+esc(p.id)+'">Từ chối</button></div></div>').join(''):'<p class="hint">Không có tài khoản nào đang chờ duyệt. Nhân viên tự đăng ký trong app, rồi bạn duyệt ở đây.</p>')+'</section>';
   const st=S.staff.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
   h+='<section class="card" style="margin-top:14px"><h2>Nhân viên ('+st.length+')</h2>'+(st.length?st.map(u=>{const me=u.id===ME.uid;
