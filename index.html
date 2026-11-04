@@ -388,7 +388,7 @@ const CLOUD=!!(window.FIREBASE_CONFIG&&window.FB);window.__CLOUD=CLOUD;
 let ME=null,ROLE=null,PROFILE=null,OWNER='all',REG={};
 function cloudWatch(coll,cb){
   const col=FB.collection(FB.db,coll);let q=col;
-  if((coll==='customers'||coll==='quotes')&&ROLE!=='admin')q=FB.query(col,FB.where('ownerId','==',ME.uid));
+  if((coll==='customers'||coll==='quotes'||coll==='custom')&&ROLE!=='admin')q=FB.query(col,FB.where('ownerId','==',ME.uid));
   return FB.onSnapshot(q,sn=>cb(sn.docs.map(d=>Object.assign({id:d.id},d.data())),sn.metadata),e=>cb(null,null,e));
 }
 async function cloudSet(coll,id,data){await FB.setDoc(FB.doc(FB.db,coll,id),JSON.parse(JSON.stringify(data)));}
@@ -409,13 +409,13 @@ function renderStaff(){
   const box=$('#staff-box');if(!box||!CLOUD||ROLE!=='admin')return;
   const cnt=(arr,id)=>arr.filter(x=>x.ownerId===id).length;
   const pend=S.pending.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
-  const nv=$('#nav-staff span');if(nv)nv.textContent=pend.length?'Duyệt ('+pend.length+')':'Nhân viên';
+  const chg=pendingChanges(),todo=pend.length+chg.length,nv=$('#nav-staff span');if(nv)nv.textContent=todo?'Chờ xử lý ('+todo+')':'Nhân viên';
   let h='<section class="card"><h2>Chờ duyệt ('+pend.length+')</h2>'+(pend.length?pend.map(p=>'<div class="srow"><div class="c-main"><div class="c-name">'+esc(p.name||'(chưa có tên)')+'</div><div class="qc-sub">'+esc(p.email||'')+(p.phone?' · '+esc(p.phone):'')+'</div></div><div class="acts"><button type="button" class="btn sm primary" data-act="st-approve" data-id="'+esc(p.id)+'">Duyệt</button><button type="button" class="btn sm danger" data-act="st-reject" data-id="'+esc(p.id)+'">Từ chối</button></div></div>').join(''):'<p class="hint">Không có tài khoản nào đang chờ duyệt. Nhân viên tự đăng ký trong app, rồi bạn duyệt ở đây.</p>')+'</section>';
   const st=S.staff.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
   h+='<section class="card" style="margin-top:14px"><h2>Nhân viên ('+st.length+')</h2>'+(st.length?st.map(u=>{const me=u.id===ME.uid;
     return '<div class="srow"><div class="c-main"><div class="c-name">'+esc(u.name||u.email||'')+(me?'<span class="tag">Bạn (Admin)</span>':'')+(u.active?'':'<span class="tag">Đã tắt</span>')+'</div><div class="qc-sub">'+esc(u.email||'')+(u.phone?' · '+esc(u.phone):'')+'</div><div class="qc-sub">'+cnt(S.quotes,u.id)+' báo giá · '+cnt(S.customers,u.id)+' khách</div></div>'
     +'<div class="acts"><button type="button" class="btn sm" data-act="st-view" data-id="'+esc(u.id)+'">Xem báo giá</button>'+(me?'':'<button type="button" class="btn sm'+(u.active?' danger':'')+'" data-act="st-toggle" data-id="'+esc(u.id)+'">'+(u.active?'Tắt tài khoản':'Bật lại')+'</button>')+'</div></div>';}).join(''):'<p class="hint">Chưa có nhân viên nào.</p>')+'</section>';
-  box.innerHTML=h;
+  box.innerHTML=chgHTML(chg)+h;
 }
 /* --- giao diện đăng nhập --- */
 const AUTHERR={'auth/invalid-credential':'Email hoặc mật khẩu chưa đúng.','auth/wrong-password':'Email hoặc mật khẩu chưa đúng.','auth/user-not-found':'Email hoặc mật khẩu chưa đúng.','auth/email-already-in-use':'Email này đã được đăng ký. Hãy đăng nhập.','auth/weak-password':'Mật khẩu cần ít nhất 6 ký tự.','auth/invalid-email':'Email chưa đúng định dạng.','auth/too-many-requests':'Thử quá nhiều lần, hãy đợi vài phút rồi thử lại.','auth/network-request-failed':'Không có mạng, hãy kiểm tra kết nối.','auth/missing-password':'Hãy nhập mật khẩu.'};
@@ -484,8 +484,8 @@ async function resolveRole(u){
   }catch(e){return fail(e);}
 }
 let AUTOSEEDED=false;
-function maybeAutoSeed(){if(!CLOUD||AUTOSEEDED||!ROLE)return;if(!S.loaded.catalog||!S.loaded.settings)return;if(S.catalog.length||S.settingsExists)return;AUTOSEEDED=true;ACT.seed();}
-function applyRole(){const sb=$('#seed-btn');if(sb)sb.hidden=false;document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
+function maybeAutoSeed(){if(!CLOUD||AUTOSEEDED||ROLE!=='admin')return;if(!S.loaded.catalog||!S.loaded.settings)return;if(S.catalog.length||S.settingsExists)return;AUTOSEEDED=true;ACT.seed();}
+function applyRole(){const sb=$('#seed-btn');if(sb)sb.hidden=ROLE==='staff';document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
 function cloudGate(){return new Promise(resolve=>{
   try{FB.init(window.FIREBASE_CONFIG);}catch(e){ERRD=((e&&e.code)||'init')+': '+((e&&e.message)||e);showAuth('error');return;}
   let done=false,got=false;
@@ -518,9 +518,103 @@ async function remove(coll,id){try{await store.del(coll,id);return true;}catch(e
 const body=r=>{const o=clone(r);delete o.id;return o;};
 
 /* ---------- state ---------- */
-const S={staff:[],pending:[],catalog:[],customers:[],quotes:[],settings:mergeSettings(null),loaded:{catalog:false,customers:false,quotes:false,settings:false},err:null,timeout:false};
+const S={staff:[],pending:[],catalog:[],catalogShared:[],settingsShared:null,custom:[],customErr:null,mineIds:{},mineKeys:{},customers:[],quotes:[],settings:mergeSettings(null),loaded:{catalog:false,customers:false,quotes:false,settings:false},err:null,timeout:false};
 let Q=null,CE=null,H={q:'',st:'all'},C={q:''},DL=null,MODAL={};
 const catById=id=>S.catalog.find(x=>x.id===id);
+
+/* ---------- chỉnh riêng của nhân viên (không ảnh hưởng bảng chung của admin) ---------- */
+const hsh=v=>{const s=JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,n)=>{o[n]=x[n];return o;},{}):x);let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return String(h);};
+const SKEYS=['dealer','address','validDays','province','provinces','fees','loan','footer','warranty'];
+const SLABEL={dealer:'Tên đơn vị dưới logo',address:'Địa chỉ',validDays:'Số ngày hiệu lực báo giá',province:'Tỉnh mặc định',provinces:'Phí dịch vụ theo tỉnh',fees:'Các loại phí',loan:'Trả góp mặc định',footer:'Lời nhắn cuối báo giá',warranty:'Bảo hành'};
+const FLAB={plateZone:'Khu vực biển số',plate:'Phí biển số',inspection:'Phí đăng kiểm',road:'Phí đường bộ',tnds:'Bảo hiểm TNDS',service:'Phí dịch vụ',mica:'Ép biển số mica',regRate:'Lệ phí trước bạ (%)',bhvcRate:'Bảo hiểm thân vỏ (%)',downPct:'Trả trước (%)',years:'Số năm vay',rate:'Lãi suất (%)',method:'Hình thức trả'};
+const isStaffRole=()=>CLOUD&&ROLE==='staff';
+const myCustom=()=>(ME&&S.custom.find(x=>x.id===ME.uid))||{catalog:{},settings:{}};
+const cbody=r=>{const o=clone(r);delete o.id;return o;};
+function recompute(){
+  let cat=S.catalogShared;const set=mergeSettings(S.settingsShared);S.mineIds={};S.mineKeys={};
+  if(isStaffRole()){
+    const cu=myCustom(),cc=cu.catalog||{},cs=cu.settings||{},ids={};cat=[];
+    S.catalogShared.forEach(r=>{ids[r.id]=1;const e=cc[r.id];if(e&&e.b===hsh(cbody(r))){S.mineIds[r.id]=1;if(e.v)cat.push(Object.assign({id:r.id},clone(e.v)));}else cat.push(r);});
+    Object.keys(cc).forEach(id=>{const e=cc[id];if(!ids[id]&&e&&e.b===null&&e.v){S.mineIds[id]=1;cat.push(Object.assign({id:id},clone(e.v)));}});
+    SKEYS.forEach(k=>{const e=cs[k];if(e&&e.b===hsh(set[k])){set[k]=clone(e.v);S.mineKeys[k]=1;}});
+  }
+  S.catalog=cat;S.settings=set;
+  if(CLOUD&&PROFILE){S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';}
+}
+async function saveCustom(mut){
+  const cur=clone(myCustom());delete cur.id;cur.catalog=cur.catalog||{};cur.settings=cur.settings||{};
+  mut(cur);
+  if(!Object.keys(cur.catalog).length&&!Object.keys(cur.settings).length)return remove('custom',ME.uid);
+  cur.ownerId=ME.uid;cur.ownerName=(PROFILE&&PROFILE.name)||'';cur.updatedAt=new Date().toISOString();
+  return put('custom',ME.uid,cur);
+}
+async function saveCat(id,rec){
+  if(!isStaffRole())return put('catalog',id,rec);
+  const sh=S.catalogShared.find(x=>x.id===id),nb=cbody(rec);
+  return saveCustom(c=>{if(sh&&hsh(nb)===hsh(cbody(sh)))delete c.catalog[id];else c.catalog[id]={b:sh?hsh(cbody(sh)):null,v:nb};});
+}
+async function removeCat(id){
+  if(!isStaffRole())return remove('catalog',id);
+  const sh=S.catalogShared.find(x=>x.id===id);
+  return saveCustom(c=>{if(sh)c.catalog[id]={b:hsh(cbody(sh)),v:null};else delete c.catalog[id];});
+}
+async function saveSettingsMine(){
+  const cur=settingsForSave(),base=mergeSettings(S.settingsShared);
+  return saveCustom(c=>{c.settings={};SKEYS.forEach(k=>{if(hsh(cur[k])!==hsh(base[k]))c.settings[k]={b:hsh(base[k]),v:clone(cur[k])};});});
+}
+const revertCat=id=>saveCustom(c=>{delete c.catalog[id];});
+const revertAll=()=>remove('custom',ME.uid);
+function staffBannerHTML(){if(!isStaffRole())return '';const n=Object.keys(S.mineIds).length+Object.keys(S.mineKeys).length;
+  return '<div class="banner"><span>Bảng giá và cài đặt chung do admin cập nhật. Bạn có thể chỉnh riêng cho mình: thay đổi chỉ áp dụng trên tài khoản của bạn và được gửi cho admin xem.'+(n?' Hiện có '+n+' mục bạn đã chỉnh riêng.':'')+'</span>'+(n?'<button type="button" class="btn sm" data-act="cust-reset">Khôi phục về bảng chung</button>':'')+'</div>';}
+function pendingChanges(){
+  const out=[];if(!(CLOUD&&ROLE==='admin'))return out;
+  const sh={};S.catalogShared.forEach(r=>{sh[r.id]=r;});const base=mergeSettings(S.settingsShared);
+  S.custom.forEach(cu=>{const cc=cu.catalog||{},cs=cu.settings||{};
+    Object.keys(cc).forEach(id=>{const e=cc[id],r=sh[id];if(!e)return;if(r?e.b===hsh(cbody(r)):(e.b===null&&e.v))out.push({uid:cu.id,name:cu.ownerName,kind:'cat',id:id,e:e,s:r});});
+    SKEYS.forEach(k=>{const e=cs[k];if(e&&e.b===hsh(base[k]))out.push({uid:cu.id,name:cu.ownerName,kind:'set',id:k,e:e,base:base[k]});});
+  });
+  return out;
+}
+const mny=n=>dots(+n||0)+' ₫';
+const pDisc=x=>(x.promos||[]).filter(p=>p.type==='discount').reduce((a,p)=>a+(+p.amount||0),0);
+const pGift=x=>(x.promos||[]).filter(p=>p.type==='gift').length;
+function diffCat(a,v){
+  if(!a)return ['Xe mới: '+(v.brand||'')+' '+(v.model||'')+' · '+(v.variants||[]).length+' phiên bản'];
+  if(!v)return ['Xóa xe khỏi bảng giá'];
+  const o=[];if((a.brand||'')!==(v.brand||'')||(a.model||'')!==(v.model||''))o.push('Tên xe: '+a.brand+' '+a.model+' → '+v.brand+' '+v.model);
+  if((a.spec||'')!==(v.spec||''))o.push('Thông số: '+(a.spec||'(trống)')+' → '+(v.spec||'(trống)'));
+  const am={},vm={};(a.variants||[]).forEach(x=>{am[x.name]=x;});(v.variants||[]).forEach(x=>{vm[x.name]=x;});
+  Object.keys(vm).forEach(n=>{const x=am[n],y=vm[n];if(!x){o.push('Thêm phiên bản '+n+' · '+mny(y.price));return;}
+    if(+x.price!==+y.price)o.push(n+': giá niêm yết '+mny(x.price)+' → '+mny(y.price));
+    if(hsh(x.promos||[])!==hsh(y.promos||[]))o.push(n+': ưu đãi thay đổi (giảm '+mny(pDisc(x))+' → '+mny(pDisc(y))+', quà '+pGift(x)+' → '+pGift(y)+')');});
+  Object.keys(am).forEach(n=>{if(!vm[n])o.push('Xóa phiên bản '+n);});
+  if(hsh(a.colors||[])!==hsh(v.colors||[]))o.push('Màu sắc thay đổi');
+  return o.length?o:['Thay đổi khác'];
+}
+const fmtV=x=>typeof x==='number'?dots(x):(x===''||x==null?'(trống)':String(x));
+function diffSet(k,a,b){
+  if(k==='provinces'){const am={},bm={},o=[];(a||[]).forEach(x=>{am[x.name]=x.fee;});(b||[]).forEach(x=>{bm[x.name]=x.fee;});
+    Object.keys(bm).forEach(n=>{if(!(n in am))o.push('Thêm '+n+': '+mny(bm[n]));else if(+am[n]!==+bm[n])o.push(n+': '+mny(am[n])+' → '+mny(bm[n]));});
+    Object.keys(am).forEach(n=>{if(!(n in bm))o.push('Bỏ '+n);});return o.length?o:['Thay đổi khác'];}
+  if(a&&b&&typeof a==='object'){const o=[];Object.keys(Object.assign({},a,b)).forEach(x=>{if(hsh(a[x])!==hsh(b[x]))o.push((FLAB[x]||x)+': '+fmtV(a[x])+' → '+fmtV(b[x]));});return o.length?o:['Thay đổi khác'];}
+  return [fmtV(a)+' → '+fmtV(b)];
+}
+async function dropChange(ch){
+  const cu=S.custom.find(x=>x.id===ch.uid);if(!cu)return;const d=clone(cu);delete d.id;d.catalog=d.catalog||{};d.settings=d.settings||{};
+  if(ch.kind==='cat')delete d.catalog[ch.id];else delete d.settings[ch.id];
+  if(!Object.keys(d.catalog).length&&!Object.keys(d.settings).length)await remove('custom',ch.uid);else await put('custom',ch.uid,d);
+}
+function chgHTML(chg){
+  let h='<section class="card" style="margin-bottom:14px"><h2>Chỉnh sửa của nhân viên ('+chg.length+')</h2><p class="hint" style="margin-bottom:12px">Nhân viên chỉnh riêng chỉ áp dụng trên tài khoản của họ. Bấm "Áp dụng cho cả đội" để đưa vào bảng chung, hoặc "Từ chối" để nhân viên quay về bảng chung. Khi bạn cập nhật bảng chung, chỉnh sửa riêng của mục đó tự hết hiệu lực.</p>';
+  if(!chg.length)return h+'<p class="hint">Chưa có chỉnh sửa nào từ nhân viên.</p></section>';
+  const by={};chg.forEach(c=>{(by[c.uid]=by[c.uid]||[]).push(c);});
+  Object.keys(by).forEach(uid=>{h+='<div class="c-name" style="margin:14px 0 4px">'+esc(staffName(uid)||by[uid][0].name||'Nhân viên')+'</div>';
+    by[uid].forEach(c=>{const x=c.kind==='cat'?(c.e.v||c.s||{}):null,title=c.kind==='cat'?((x.brand||'')+' '+(x.model||'')).trim():SLABEL[c.id];
+      const lines=c.kind==='cat'?diffCat(c.s,c.e.v):diffSet(c.id,c.base,c.e.v),at='data-u="'+esc(c.uid)+'" data-kind="'+c.kind+'" data-id="'+esc(c.id)+'"';
+      h+='<div class="srow"><div class="c-main"><div class="c-name">'+esc(title)+'</div>'+lines.map(l=>'<div class="qc-sub">'+esc(l)+'</div>').join('')+'</div><div class="acts"><button type="button" class="btn sm primary" data-act="ch-apply" '+at+'>Áp dụng cho cả đội</button><button type="button" class="btn sm danger" data-act="ch-drop" '+at+'>Từ chối</button></div></div>';});});
+  return h+'</section>';
+}
+
 
 function provFee(n,fb){const p=(S.settings.provinces||[]).find(x=>x.name===n);return p?p.fee:fb;}
 function newQuote(){const f=S.settings.fees,l=S.settings.loan;
@@ -826,17 +920,17 @@ function custModal(c){MODAL={id:c?c.id:null};
 /* ---------- catalog ---------- */
 function renderCatalog(){
   const box=$('#cat-list');if(!S.loaded.catalog){box.innerHTML='<p class="hint">Đang tải bảng giá…</p>';return;}
-  $('#cat-banner').innerHTML=S.catalog.some(m=>m.sample)?'<div class="banner"><span>Một số xe đang là dữ liệu mẫu, giá chỉ để minh họa. Bấm Sửa để nhập giá thật của bạn.</span></div>':'';
+  $('#cat-banner').innerHTML=staffBannerHTML()+(S.catalog.some(m=>m.sample)?'<div class="banner"><span>Một số xe đang là dữ liệu mẫu, giá chỉ để minh họa. Bấm Sửa để nhập giá thật của bạn.</span></div>':'');
   let h='';if(CE&&CE.id==='new')h+=editorHTML();
-  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span>'+(CLOUD?'<button type="button" class="btn primary" data-act="seed">Nạp bảng giá mẫu</button>':'')+'</div>';
+  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span>'+(CLOUD&&ROLE==='admin'?'<button type="button" class="btn primary" data-act="seed">Nạp bảng giá mẫu</button>':'')+'</div>';
   S.catalog.slice().sort((a,b)=>(a.brand+a.model).localeCompare(b.brand+b.model,'vi')).forEach(m=>{h+=(CE&&CE.id===m.id)?editorHTML():catCard(m);});
   box.innerHTML=h;
 }
-function catCard(m){return '<article class="card"><div class="cat-b">'+esc(m.brand)+(m.sample?'<span class="tag">Mẫu</span>':'')+'</div><div class="cat-t">'+esc(m.model)+'</div>'+(m.spec?'<div class="qc-sub">'+esc(m.spec)+'</div>':'')
+function catCard(m){return '<article class="card"><div class="cat-b">'+esc(m.brand)+(m.sample?'<span class="tag">Mẫu</span>':'')+(S.mineIds[m.id]?'<span class="tag">Đã chỉnh riêng</span>':'')+'</div><div class="cat-t">'+esc(m.model)+'</div>'+(m.spec?'<div class="qc-sub">'+esc(m.spec)+'</div>':'')
   +'<table class="vtab">'+m.variants.map(v=>{const ps=v.promos||[],dc=ps.filter(p=>p.type==='discount').reduce((a,p)=>a+(+p.amount||0),0),gf=ps.filter(p=>p.type==='gift').length;
     return '<tr><td>'+esc(v.name)+(ps.length?'<div class="qc-sub">'+(dc?'Giảm '+dots(dc)+' ₫':'')+(dc&&gf?' · ':'')+(gf?gf+' quà tặng':'')+'</div>':'')+'</td><td>'+dots(v.price)+' ₫</td></tr>';}).join('')+'</table>'
   +'<div class="chips" style="margin-top:12px">'+m.colors.map(c=>'<span class="o-sub" style="display:inline-flex;align-items:center;gap:6px"><i class="dot" style="background:'+esc(c.hex||'#ccc')+'"></i>'+esc(c.name)+(c.extra>0?' +'+dots(c.extra):'')+'</span>').join('')+'</div>'
-  +'<div class="row-actions"><button type="button" class="btn sm" data-act="cat-edit" data-id="'+esc(m.id)+'">Sửa</button></div></article>';}
+  +'<div class="row-actions"><button type="button" class="btn sm" data-act="cat-edit" data-id="'+esc(m.id)+'">Sửa</button>'+(isStaffRole()&&S.mineIds[m.id]?'<button type="button" class="btn sm" data-act="cat-revert" data-id="'+esc(m.id)+'">Bỏ chỉnh sửa riêng</button>':'')+'</div></article>';}
 function vpromoHTML(v,i){const ps=v.promos||[];
   return '<details class="vp" data-vi="'+i+'"'+(CE.open&&CE.open[i]?' open':'')+'><summary>Ưu đãi mặc định ('+ps.length+')</summary>'
   +ps.map((p,k)=>'<div class="promo"><input class="p-l" type="text" aria-label="Nội dung ưu đãi" placeholder="Nội dung ưu đãi" data-cevp="1" data-i="'+i+'" data-k="'+k+'" data-f="label" value="'+esc(p.label)+'">'
@@ -898,7 +992,7 @@ const fmtDT=iso=>{const d=iso?new Date(iso):null;return d&&!isNaN(d)?fmtDate(d):
 const stamp=()=>new Date().toISOString().slice(0,10);
 function renderSettings(){
   if(!CLOUD){renderSettingsFull();return;}
-  renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());
+  renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());if(isStaffRole())$('#set-form').insertAdjacentHTML('afterbegin',staffBannerHTML());
 }
 function profileCardHTML(){const P=PROFILE||{};
   return '<section class="card"><h2>Tài khoản của bạn</h2><p class="hint" style="margin-bottom:12px">Tên và số điện thoại này hiện trên báo giá bạn gửi khách. Đăng nhập: '+esc(ME?ME.email:'')+(ROLE==='admin'?' (Admin)':'')+'</p><div class="grid2 stack">'
@@ -906,7 +1000,7 @@ function profileCardHTML(){const P=PROFILE||{};
   +'<div class="field"><label for="pf-phone">Số điện thoại / Zalo</label><input id="pf-phone" type="tel" data-prof="phone" autocomplete="off" value="'+esc(P.phone||'')+'"></div></div>'
   +'<button type="button" class="btn" style="margin-top:14px" data-act="logout">Đăng xuất</button></section>';}
 let setT=null;
-function queueSettingsSave(){clearTimeout(setT);setT=setTimeout(async()=>{if(await put('settings','main',settingsForSave()))toast('Đã lưu cài đặt');},900);}
+function queueSettingsSave(){clearTimeout(setT);setT=setTimeout(async()=>{if(await(isStaffRole()?saveSettingsMine():put('settings','main',settingsForSave())))toast(isStaffRole()?'Đã lưu riêng cho bạn, admin sẽ nhận được thay đổi':'Đã lưu cài đặt');},900);}
 function setPath(o,p,v){const k=p.split('.');let t=o;while(k.length>1)t=t[k.shift()];t[k[0]]=v;}
 
 /* ---------- views / banner / sync ---------- */
@@ -932,17 +1026,18 @@ function updateSync(){
 }
 const inFocus=sel=>{const a=document.activeElement,r=$(sel);return !!(a&&r&&r.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName));};
 function onSnap(coll,list,meta,err){
-  if(err){S.err=err;updateSync();return;}S.err=null;
-  if(coll==='settings'){S.settingsExists=!!list.find(x=>x.id==='main');S.settings=mergeSettings(list.find(x=>x.id==='main'));if(CLOUD&&PROFILE){S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';}}else S[coll]=list;
-  S.loaded[coll]=true;updateSync();
+  if(err){if(coll==='custom'){S.customErr=err;return;}S.err=err;updateSync();return;}if(coll!=='custom')S.err=null;
+  if(coll==='settings'){S.settingsExists=!!list.find(x=>x.id==='main');S.settingsShared=list.find(x=>x.id==='main')||null;recompute();}else if(coll==='catalog'){S.catalogShared=list;recompute();}else if(coll==='custom'){S.custom=list;S.customErr=null;recompute();}else S[coll]=list;
+  if(coll!=='custom')S.loaded[coll]=true;updateSync();
   if(CLOUD&&(coll==='catalog'||coll==='settings')&&meta&&!meta.fromCache)setTimeout(maybeAutoSeed,300);
-  if(coll==='catalog'){ensureSelection();if(!inFocus('#qform'))fullRender();else refresh();if(!(CE&&inFocus('#cat-list')))renderCatalog();}
+  if(coll==='catalog'){renderStaff();ensureSelection();if(!inFocus('#qform'))fullRender();else refresh();if(!(CE&&inFocus('#cat-list')))renderCatalog();}
   else if(coll==='customers'){fillCustList();renderCustomers();renderOwnerFilters();}
   else if(coll==='quotes'){renderHistory();renderCustomers();renderStaff();renderOwnerFilters();}
   else if(coll==='staff'||coll==='pending'){renderStaff();renderOwnerFilters();renderHistory();renderCustomers();}
+  else if(coll==='custom'){renderStaff();if(!Q.id&&!Q._dirty){Q=newQuote();ensureSelection();}if(!inFocus('#qform'))fullRender();else refresh();if(!(CE&&inFocus('#cat-list')))renderCatalog();if(!inFocus('#set-form'))renderSettings();renderBanner();}
   else if(coll==='settings'){
     if(!Q.id&&!Q._dirty){Q=newQuote();ensureSelection();if(!inFocus('#qform'))fullRender();}else refresh();
-    if(!inFocus('#set-form'))renderSettings();renderBanner();
+    if(!inFocus('#set-form'))renderSettings();renderBanner();renderStaff();
   }
 }
 function openPreview(){$('#pcol').classList.add('open');document.body.style.overflow='hidden';$('#pcol').scrollTop=0;}
@@ -1012,7 +1107,7 @@ const ACT={
     saveFile('SaoLuu_BaoGia_'+stamp()+'.json',new Blob([JSON.stringify({app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{catalog:cat,customers:pack(S.customers),quotes:pack(S.quotes),settings:{main:body(Object.assign({id:'main'},S.settings))}}})],{type:'application/json'}));},
   'bk-export'(){if(CLOUD)return;const o={app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{}};['catalog','customers','quotes','settings'].forEach(c=>{try{o.data[c]=JSON.parse(lsGet('bgia:'+c)||'{}');}catch(e){o.data[c]={};}});saveFile('SaoLuu_BaoGia_'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(o)],{type:'application/json'}));},
   'bk-import'(){if(CLOUD)return;const f=$('#bk-file');if(f)f.click();},
-  async 'seed'(){const sd=SEED_DATA;for(const id of Object.keys(sd.catalog)){if(!await put('catalog',id,sd.catalog[id]))return;}if(!S.settingsExists&&!await put('settings','main',sd.settings.main))return;toast('Đã nạp bảng giá xe cho cả đội');},
+  async 'seed'(){if(CLOUD&&ROLE!=='admin'){toast('Chỉ admin được nạp bảng giá mẫu');return;}const sd=SEED_DATA;for(const id of Object.keys(sd.catalog)){if(!await put('catalog',id,sd.catalog[id]))return;}if(!S.settingsExists&&!await put('settings','main',sd.settings.main))return;toast('Đã nạp bảng giá xe cho cả đội');},
   'seed-ask'(el){arm(el,'Bấm lần nữa để nạp lại (ghi đè xe cùng tên)',()=>ACT.seed());},
   async 'logout'(){try{await FB.signOut(FB.auth);}catch(e){}lsDel('bgia:draft');location.reload();},
   async 'st-approve'(el){const pd=S.pending.find(x=>x.id===el.dataset.id);if(!pd)return;try{await FB.setDoc(FB.doc(FB.db,'staff',pd.id),{name:pd.name||'',phone:pd.phone||'',email:pd.email||'',active:true,approvedAt:new Date().toISOString()});await FB.deleteDoc(FB.doc(FB.db,'pending',pd.id));toast('Đã duyệt '+(pd.name||pd.email));}catch(e){toast('Không duyệt được, hãy thử lại');}},
@@ -1029,8 +1124,15 @@ const ACT={
     d.variants=d.variants.filter(v=>v.name.trim()&&v.price>0);d.colors=d.colors.filter(c=>c.name.trim());
     if(!d.model){toast('Nhập tên dòng xe');return;}if(!d.variants.length){toast('Thêm ít nhất một phiên bản có giá');return;}
     d.variants.forEach(v=>{v.promos=(v.promos||[]).filter(p=>p.label.trim()||p.amount>0);});
-    const id=CE.id==='new'?uid('m_'):CE.id,rec=clone(d);rec.sample=false;if(await put('catalog',id,rec)){CE=null;renderCatalog();toast('Đã lưu xe');}},
-  'ce-del'(el){arm(el,'Bấm lần nữa để xóa xe',async()=>{if(await remove('catalog',CE.id)){CE=null;renderCatalog();}});}
+    const id=CE.id==='new'?uid('m_'):CE.id,rec=clone(d);rec.sample=false;if(await saveCat(id,rec)){CE=null;renderCatalog();toast(isStaffRole()?'Đã lưu riêng cho bạn, admin sẽ nhận được thay đổi':'Đã lưu xe');}},
+  'cat-revert'(el){arm(el,'Bấm lần nữa để bỏ chỉnh sửa riêng',async()=>{if(await revertCat(el.dataset.id))toast('Đã quay về bảng chung');});},
+  'cust-reset'(el){arm(el,'Bấm lần nữa để khôi phục toàn bộ',async()=>{if(await revertAll())toast('Đã quay về bảng chung');});},
+  async 'ch-apply'(el){const ch=pendingChanges().find(x=>x.uid===el.dataset.u&&x.kind===el.dataset.kind&&x.id===el.dataset.id);if(!ch)return;let ok;
+    if(ch.kind==='cat')ok=ch.e.v?await put('catalog',ch.id,Object.assign(clone(ch.e.v),{sample:false})):await remove('catalog',ch.id);
+    else{const cur=mergeSettings(S.settingsShared);cur[ch.id]=clone(ch.e.v);delete cur.id;delete cur.seller;delete cur.phone;ok=await put('settings','main',cur);}
+    if(ok){await dropChange(ch);toast('Đã áp dụng cho cả đội');}},
+  'ch-drop'(el){arm(el,'Bấm lần nữa để từ chối',async()=>{const ch=pendingChanges().find(x=>x.uid===el.dataset.u&&x.kind===el.dataset.kind&&x.id===el.dataset.id);if(!ch)return;await dropChange(ch);toast('Đã từ chối, nhân viên quay về bảng chung');});},
+  'ce-del'(el){arm(el,'Bấm lần nữa để xóa xe',async()=>{if(await removeCat(CE.id)){CE=null;renderCatalog();}});}
 };
 async function copyText(txt){
   try{await navigator.clipboard.writeText(txt);toast('Đã sao chép');}
@@ -1096,6 +1198,7 @@ window.addEventListener('hashchange',()=>setView(location.hash.slice(1)));
   await store.init();updateSync();renderBanner();
   if(CLOUD){if(!await cloudGate())return;if((Q._dirty||Q.id)&&Q._owner!==ME.uid){Q=newQuote();lsDel('bgia:draft');}S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';renderSettings();renderOwnerFilters();}
   ['catalog','customers','quotes','settings'].forEach(c=>store.watch(c,(l,m,e)=>onSnap(c,l,m,e)));
+  if(CLOUD)store.watch('custom',(l,m,e)=>onSnap('custom',l,m,e));
   if(CLOUD&&ROLE==='admin')['staff','pending'].forEach(c=>store.watch(c,(l,m,e)=>onSnap(c,l,m,e)));
 })();
 })();

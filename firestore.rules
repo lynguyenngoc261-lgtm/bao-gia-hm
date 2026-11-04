@@ -34,9 +34,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Bảng giá (xe, ưu đãi) và cài đặt chung (phí tỉnh...): nhân viên đã được duyệt đều xem và sửa được
-    match /catalog/{id} { allow read, write: if isStaff(); }
-    match /settings/{id} { allow read, write: if isStaff(); }
+    // Bảng giá (xe, ưu đãi) và cài đặt chung (phí tỉnh...): nhân viên đã được duyệt chỉ xem, chỉ admin được sửa
+    match /catalog/{id} { allow read: if isStaff(); allow write: if isAdmin(); }
+    match /settings/{id} { allow read: if isStaff(); allow write: if isAdmin(); }
+
+    // Chỉnh sửa riêng của từng nhân viên (không ảnh hưởng bảng chung): nhân viên chỉ đọc và ghi của mình, admin xem và xử lý tất cả
+    match /custom/{id} {
+      allow read: if isAdmin() || (isStaff() && resource.data.ownerId == request.auth.uid);
+      allow create: if isStaff() && id == request.auth.uid && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAdmin() || (isStaff() && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == request.auth.uid);
+      allow delete: if isAdmin() || (isStaff() && resource.data.ownerId == request.auth.uid);
+    }
 
     // Khách và báo giá: mỗi nhân viên chỉ thấy của mình, admin thấy tất cả
     match /customers/{id} {
