@@ -259,7 +259,6 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
 .srow{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .srow:last-child{border-bottom:0}
 .ownersel{width:100%}
-body.role-staff #v-bang-gia .toolbar,body.role-staff #v-bang-gia .row-actions{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -869,8 +868,7 @@ function renderSettingsFull(){
 }
 function renderSettings(){
   if(!CLOUD){renderSettingsFull();return;}
-  if(ROLE==='admin'){renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());}
-  else $('#set-form').innerHTML=profileCardHTML();
+  renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());
 }
 function profileCardHTML(){const P=PROFILE||{};
   return '<section class="card"><h2>Tài khoản của bạn</h2><p class="hint" style="margin-bottom:12px">Tên và số điện thoại này hiện trên báo giá bạn gửi khách. Đăng nhập: '+esc(ME?ME.email:'')+(ROLE==='admin'?' (Admin)':'')+'</p><div class="grid2 stack">'

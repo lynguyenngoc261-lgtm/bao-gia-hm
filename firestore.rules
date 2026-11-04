@@ -33,9 +33,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Bảng giá và cài đặt chung: ai được duyệt thì xem, chỉ admin sửa
-    match /catalog/{id} { allow read: if isStaff(); allow write: if isAdmin(); }
-    match /settings/{id} { allow read: if isStaff(); allow write: if isAdmin(); }
+    // Bảng giá (xe, ưu đãi) và cài đặt chung (phí tỉnh...): nhân viên đã được duyệt đều xem và sửa được
+    match /catalog/{id} { allow read, write: if isStaff(); }
+    match /settings/{id} { allow read, write: if isStaff(); }
 
     // Khách và báo giá: mỗi nhân viên chỉ thấy của mình, admin thấy tất cả
     match /customers/{id} {
