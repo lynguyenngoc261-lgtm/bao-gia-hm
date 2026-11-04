@@ -161,6 +161,7 @@ body:not([data-view="bao-gia"]) .sumbar{display:none}
 .p-rule{height:3px;background:var(--paper-accent);margin:14px 0}
 .p-car{font-family:var(--f-disp);font-weight:700;font-size:38px;line-height:1.02}
 .p-carsub{color:var(--paper-muted);margin-top:3px}
+.p-carimg{text-align:center;margin:6px 0 2px}.p-carimg img{width:78%;max-width:420px;height:auto;display:inline-block}
 .p-blk{margin-top:18px}
 .p-bt{font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-accent);padding-bottom:6px;border-bottom:2px solid var(--paper-ink)}
 .p-row{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--paper-line)}
@@ -579,7 +580,7 @@ function buildDoc(q,c){
   const wl=String(st.warranty||'').split('\n').map(s=>s.trim()).filter(Boolean);
   if(wl.length)blocks2.push({title:'Bảo hành',rows:wl.map(l=>({l,v:''}))});
   return {empty:false,dealer:st.dealer,contact,date:fmtDate(base),valid:fmtDate(valid),customer:q.customerName.trim(),customerPhone:q.customerPhone.trim(),
-    car:{title:q.carName,sub,spec:q.carSpec||''},blocks1,total:{l:'TỔNG GIÁ LĂN BÁNH DỰ KIẾN',v:money(c.rolling),sub:'≈ '+shortM(c.rolling)+' đồng'},blocks2,note:(q.note||'').trim(),footer:st.footer};
+    car:{title:q.carName,sub,spec:q.carSpec||'',img:carImgSrc(q.carName)},blocks1,total:{l:'TỔNG GIÁ LĂN BÁNH DỰ KIẾN',v:money(c.rolling),sub:'≈ '+shortM(c.rolling)+' đồng'},blocks2,note:(q.note||'').trim(),footer:st.footer};
 }
 
 function paperHTML(d){
@@ -589,7 +590,7 @@ function paperHTML(d){
   const band='<div class="p-band"><img class="p-logo" src="'+LOGO_URL+'" alt="Hoàng Minh WCAR">'+(d.dealer?'<div class="p-dealer">'+esc(d.dealer)+'</div>':'')+d.contact.map(l=>'<div class="p-contact">'+esc(l)+'</div>').join('')+'</div>';
   return band+'<div class="p-body"><div class="p-title">BẢNG BÁO GIÁ XE ĐIỆN</div><div class="p-meta">Ngày '+d.date+' · Hiệu lực đến '+d.valid+'</div>'
     +(d.customer?'<div class="p-cust">Kính gửi: '+esc(d.customer)+(d.customerPhone?' · '+esc(d.customerPhone):'')+'</div>':'')
-    +'<div class="p-rule"></div><div class="p-car">'+esc(d.car.title)+'</div><div class="p-carsub">'+esc(d.car.sub)+(d.car.spec?'<br>'+esc(d.car.spec):'')+'</div>'
+    +'<div class="p-rule"></div><div class="p-car">'+esc(d.car.title)+'</div><div class="p-carsub">'+esc(d.car.sub)+(d.car.spec?'<br>'+esc(d.car.spec):'')+'</div>'+(d.car.img?'<div class="p-carimg"><img src="'+esc(d.car.img)+'" alt="'+esc(d.car.title)+'"></div>':'')
     +d.blocks1.map(blk).join('')
     +'<div class="p-total"><div class="tl">'+esc(d.total.l)+'</div><div class="tv">'+esc(d.total.v)+'</div><div class="ts">'+esc(d.total.sub)+'</div></div>'
     +d.blocks2.map(blk).join('')
@@ -608,6 +609,11 @@ const LOGO_B64='iVBORw0KGgoAAAANSUhEUgAAAoAAAACoCAYAAABwrV9RAAEAAElEQVR42sz9a5Bl
 let LOGO_URL='data:image/png;base64,'+LOGO_B64;
 try{const bin=atob(LOGO_B64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);LOGO_URL=URL.createObjectURL(new Blob([u8],{type:'image/png'}));}catch(e){}
 const LOGO_IMG=new Image();LOGO_IMG.src=LOGO_URL;
+/* ảnh xe: thêm dòng mới = thêm 1 file vào thư mục images/ và 1 dòng ở đây (k = từ khoá trong tên xe, viết thường không dấu) */
+const CAR_IMGS=[{k:'xiaoma',src:'images/xiaoma.webp'}];
+const CAR_IMG_CACHE={};
+function carImgSrc(name){const n=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();const f=CAR_IMGS.find(x=>n.indexOf(x.k)>=0);return f?f.src:'';}
+function carImgObj(src){if(!src)return null;if(!CAR_IMG_CACHE[src]){const i=new Image();i.src=src;CAR_IMG_CACHE[src]=i;}return CAR_IMG_CACHE[src];}
 document.querySelectorAll('img[data-logo]').forEach(i=>{i.src=LOGO_URL;});
 
 /* ---------- canvas image of the quote ---------- */
@@ -638,6 +644,7 @@ function drawQuote(d,ctx,W,draw){
   wrap(d.car.title,disp(700,76),IW).forEach(l=>{y+=68;T(l,M,y,disp(700,76),INK);});
   const sub=[d.car.sub,d.car.spec].filter(Boolean).join('\n');
   if(sub)wrap(sub,body(400,26),IW).forEach(l=>{y+=38;T(l,M,y,body(400,26),MUT);});
+  {const im=carImgObj(d.car.img);if(im&&im.complete&&im.naturalWidth){const iw=Math.round(IW*0.74),ih=Math.round(iw*im.naturalHeight/im.naturalWidth);y+=18;if(draw)ctx.drawImage(im,M+Math.round((IW-iw)/2),y,iw,ih);y+=ih;}}
   y+=34;
   const block=b=>{
     T(b.title.toUpperCase(),M,y+24,body(700,22),ACC);y+=24+14;R(M,y,IW,3,INK);y+=3;
@@ -663,7 +670,7 @@ function drawQuote(d,ctx,W,draw){
 async function loadFonts(){try{await Promise.all([['400','Be Vietnam Pro'],['500','Be Vietnam Pro'],['600','Be Vietnam Pro'],['700','Be Vietnam Pro'],['700','Barlow Condensed']].map(f=>document.fonts.load(f[0]+' 24px "'+f[1]+'"','Ăâđêôơư ấầẩẫậ 0123456789')));}catch(e){}}
 async function makeCanvas(){
   const c=calc(Q),d=buildDoc(Q,c);if(d.empty){toast('Chọn xe trước khi xuất báo giá');return null;}
-  await loadFonts();try{await LOGO_IMG.decode();}catch(e){}const W=1080,m=document.createElement('canvas').getContext('2d');
+  await loadFonts();try{await LOGO_IMG.decode();}catch(e){}{const ci=carImgObj(d.car.img);if(ci){try{await ci.decode();}catch(e){}}}const W=1080,m=document.createElement('canvas').getContext('2d');
   const H=Math.ceil(drawQuote(d,m,W,false));const cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const ctx=cv.getContext('2d');ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,W,H);drawQuote(d,ctx,W,true);return {cv,d};
 }
