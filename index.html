@@ -319,7 +319,7 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
 
     <section class="view" id="v-bang-gia" hidden>
       <div id="cat-banner"></div>
-      <div class="toolbar"><div><button class="btn primary" type="button" data-act="cat-new">+ Thêm xe</button></div></div>
+      <div class="toolbar"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" type="button" data-act="cat-new">+ Thêm xe</button><button class="btn" type="button" id="seed-btn" data-act="seed-ask" hidden>Nạp lại bảng giá từ Excel</button></div></div>
       <div class="list cols" id="cat-list"></div>
     </section>
 
@@ -481,7 +481,9 @@ async function resolveRole(u){
     return 'pending';
   }catch(e){return fail(e);}
 }
-function applyRole(){document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
+let AUTOSEEDED=false;
+function maybeAutoSeed(){if(!CLOUD||AUTOSEEDED||!ROLE)return;if(!S.loaded.catalog||!S.loaded.settings)return;if(S.catalog.length||S.settingsExists)return;AUTOSEEDED=true;ACT.seed();}
+function applyRole(){const sb=$('#seed-btn');if(sb)sb.hidden=false;document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
 function cloudGate(){return new Promise(resolve=>{
   try{FB.init(window.FIREBASE_CONFIG);}catch(e){ERRD=((e&&e.code)||'init')+': '+((e&&e.message)||e);showAuth('error');return;}
   let done=false,got=false;
@@ -509,7 +511,7 @@ const store={db:null,mode:'pending',mem:{},lis:{},
   async set(coll,id,data){if(this.mode==='cloud'){await cloudSet(coll,id,data);return;}if(this.db){await this.db.collection(coll).doc(id).set(data);return;}this.mem[coll][id]=clone(data);lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);},
   async del(coll,id){if(this.mode==='cloud'){await cloudDel(coll,id);return;}if(this.db){await this.db.collection(coll).doc(id).delete();return;}delete this.mem[coll][id];lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);}
 };
-async function put(coll,id,data){try{if(CLOUD&&(coll==='customers'||coll==='quotes')){const ex=(S[coll]||[]).find(x=>x.id===id);data=Object.assign({},data,{ownerId:(ex&&ex.ownerId)||ME.uid,ownerName:(ex&&ex.ownerName)||(PROFILE&&PROFILE.name)||''});}await store.set(coll,id,data);return true;}catch(e){toast(e&&e.code==='quota_exceeded'?'Kho dữ liệu đã đầy':'Không lưu được, hãy thử lại');return false;}}
+async function put(coll,id,data){try{if(CLOUD&&(coll==='customers'||coll==='quotes')){const ex=(S[coll]||[]).find(x=>x.id===id);data=Object.assign({},data,{ownerId:(ex&&ex.ownerId)||ME.uid,ownerName:(ex&&ex.ownerName)||(PROFILE&&PROFILE.name)||''});}await store.set(coll,id,data);return true;}catch(e){toast(e&&e.code==='quota_exceeded'?'Kho dữ liệu đã đầy':'Không lưu được'+(e&&e.code?' ['+e.code+']':'')+', hãy thử lại');return false;}}
 async function remove(coll,id){try{await store.del(coll,id);return true;}catch(e){toast('Không xóa được, hãy thử lại');return false;}}
 const body=r=>{const o=clone(r);delete o.id;return o;};
 
@@ -818,7 +820,7 @@ function renderCatalog(){
   const box=$('#cat-list');if(!S.loaded.catalog){box.innerHTML='<p class="hint">Đang tải bảng giá…</p>';return;}
   $('#cat-banner').innerHTML=S.catalog.some(m=>m.sample)?'<div class="banner"><span>Một số xe đang là dữ liệu mẫu, giá chỉ để minh họa. Bấm Sửa để nhập giá thật của bạn.</span></div>':'';
   let h='';if(CE&&CE.id==='new')h+=editorHTML();
-  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span>'+(CLOUD&&ROLE==='admin'?'<button type="button" class="btn primary" data-act="seed">Nạp bảng giá mẫu</button>':'')+'</div>';
+  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span>'+(CLOUD?'<button type="button" class="btn primary" data-act="seed">Nạp bảng giá mẫu</button>':'')+'</div>';
   S.catalog.slice().sort((a,b)=>(a.brand+a.model).localeCompare(b.brand+b.model,'vi')).forEach(m=>{h+=(CE&&CE.id===m.id)?editorHTML():catCard(m);});
   box.innerHTML=h;
 }
@@ -903,8 +905,9 @@ function updateSync(){
 const inFocus=sel=>{const a=document.activeElement,r=$(sel);return !!(a&&r&&r.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName));};
 function onSnap(coll,list,meta,err){
   if(err){S.err=err;updateSync();return;}S.err=null;
-  if(coll==='settings'){S.settings=mergeSettings(list.find(x=>x.id==='main'));if(CLOUD&&PROFILE){S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';}}else S[coll]=list;
+  if(coll==='settings'){S.settingsExists=!!list.find(x=>x.id==='main');S.settings=mergeSettings(list.find(x=>x.id==='main'));if(CLOUD&&PROFILE){S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';}}else S[coll]=list;
   S.loaded[coll]=true;updateSync();
+  if(CLOUD&&(coll==='catalog'||coll==='settings')&&meta&&!meta.fromCache)setTimeout(maybeAutoSeed,300);
   if(coll==='catalog'){ensureSelection();if(!inFocus('#qform'))fullRender();else refresh();if(!(CE&&inFocus('#cat-list')))renderCatalog();}
   else if(coll==='customers'){fillCustList();renderCustomers();renderOwnerFilters();}
   else if(coll==='quotes'){renderHistory();renderCustomers();renderStaff();renderOwnerFilters();}
@@ -972,7 +975,8 @@ const ACT={
   'ce-cancel'(){CE=null;renderCatalog();},
   'bk-export'(){const o={app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{}};['catalog','customers','quotes','settings'].forEach(c=>{try{o.data[c]=JSON.parse(lsGet('bgia:'+c)||'{}');}catch(e){o.data[c]={};}});saveFile('SaoLuu_BaoGia_'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(o)],{type:'application/json'}));},
   'bk-import'(){const f=$('#bk-file');if(f)f.click();},
-  async 'seed'(){const sd=SEED_DATA;for(const id of Object.keys(sd.catalog))await put('catalog',id,sd.catalog[id]);await put('settings','main',sd.settings.main);toast('Đã nạp bảng giá và cài đặt mẫu');},
+  async 'seed'(){const sd=SEED_DATA;for(const id of Object.keys(sd.catalog)){if(!await put('catalog',id,sd.catalog[id]))return;}if(!S.settingsExists&&!await put('settings','main',sd.settings.main))return;toast('Đã nạp bảng giá xe cho cả đội');},
+  'seed-ask'(el){arm(el,'Bấm lần nữa để nạp lại (ghi đè xe cùng tên)',()=>ACT.seed());},
   async 'logout'(){try{await FB.signOut(FB.auth);}catch(e){}lsDel('bgia:draft');location.reload();},
   async 'st-approve'(el){const pd=S.pending.find(x=>x.id===el.dataset.id);if(!pd)return;try{await FB.setDoc(FB.doc(FB.db,'staff',pd.id),{name:pd.name||'',phone:pd.phone||'',email:pd.email||'',active:true,approvedAt:new Date().toISOString()});await FB.deleteDoc(FB.doc(FB.db,'pending',pd.id));toast('Đã duyệt '+(pd.name||pd.email));}catch(e){toast('Không duyệt được, hãy thử lại');}},
   'st-reject'(el){arm(el,'Bấm lần nữa để từ chối',async()=>{try{await FB.deleteDoc(FB.doc(FB.db,'pending',el.dataset.id));toast('Đã từ chối');}catch(e){toast('Không thực hiện được');}});},
