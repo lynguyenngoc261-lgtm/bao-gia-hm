@@ -580,7 +580,7 @@ function buildDoc(q,c){
   const wl=String(st.warranty||'').split('\n').map(s=>s.trim()).filter(Boolean);
   if(wl.length)blocks2.push({title:'Bảo hành',rows:wl.map(l=>({l,v:''}))});
   return {empty:false,dealer:st.dealer,contact,date:fmtDate(base),valid:fmtDate(valid),customer:q.customerName.trim(),customerPhone:q.customerPhone.trim(),
-    car:{title:q.carName,sub,spec:q.carSpec||'',img:carImgSrc(q.carName)},blocks1,total:{l:'TỔNG GIÁ LĂN BÁNH DỰ KIẾN',v:money(c.rolling),sub:'≈ '+shortM(c.rolling)+' đồng'},blocks2,note:(q.note||'').trim(),footer:st.footer};
+    car:{title:q.carName,sub,spec:q.carSpec||'',img:carImgSrc(q.carName,q.variantName)},blocks1,total:{l:'TỔNG GIÁ LĂN BÁNH DỰ KIẾN',v:money(c.rolling),sub:'≈ '+shortM(c.rolling)+' đồng'},blocks2,note:(q.note||'').trim(),footer:st.footer};
 }
 
 function paperHTML(d){
@@ -610,9 +610,9 @@ let LOGO_URL='data:image/png;base64,'+LOGO_B64;
 try{const bin=atob(LOGO_B64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);LOGO_URL=URL.createObjectURL(new Blob([u8],{type:'image/png'}));}catch(e){}
 const LOGO_IMG=new Image();LOGO_IMG.src=LOGO_URL;
 /* ảnh xe: thêm dòng mới = thêm 1 file vào thư mục images/ và 1 dòng ở đây (k = từ khoá trong tên xe, viết thường không dấu) */
-const CAR_IMGS=[{k:'xiaoma',src:'images/xiaoma.webp'}];
+const CAR_IMGS=[{k:'xiaoma',v:'170',src:'images/xiaoma.webp'},{k:'xiaoma',src:'images/xiaoma-bac-xiu.webp'}];
 const CAR_IMG_CACHE={};
-function carImgSrc(name){const n=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();const f=CAR_IMGS.find(x=>n.indexOf(x.k)>=0);return f?f.src:'';}
+function carImgSrc(name,variant){const nm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();const n=nm(name),v=nm(variant);const f=CAR_IMGS.find(x=>n.indexOf(x.k)>=0&&(!x.v||v.indexOf(x.v)>=0));return f?f.src:'';}
 function carImgObj(src){if(!src)return null;if(!CAR_IMG_CACHE[src]){const i=new Image();i.src=src;CAR_IMG_CACHE[src]=i;}return CAR_IMG_CACHE[src];}
 document.querySelectorAll('img[data-logo]').forEach(i=>{i.src=LOGO_URL;});
 
