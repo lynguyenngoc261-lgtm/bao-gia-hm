@@ -245,9 +245,25 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
   .list.cols{grid-template-columns:repeat(2,minmax(0,1fr))}
   .toast{bottom:28px}
 }
+#auth{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:16px;overflow:auto}
+#auth[hidden]{display:none}
+.auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 20px;box-shadow:0 12px 30px -22px rgba(0,0,0,.5)}
+.auth-card img.al{display:block;height:54px;width:auto;margin:0 auto 14px}
+.auth-card h2{font-family:var(--f-disp);font-size:26px;text-transform:uppercase;text-align:center;margin-bottom:4px}
+.auth-card .sub{color:var(--ink-2);text-align:center;font-size:14px;margin-bottom:14px}
+.auth-card .field{margin-top:10px}
+.auth-card .btn{width:100%;margin-top:14px}
+.auth-card .lnk{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:10px 4px;width:100%;margin-top:4px;text-align:center}
+.auth-err{color:var(--bad);font-size:13.5px;margin-top:10px;text-align:center;min-height:1em}
+.auth-ok{color:var(--good);font-size:13.5px;margin-top:10px;text-align:center}
+.srow{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.srow:last-child{border-bottom:0}
+.ownersel{width:100%}
+body.role-staff #v-bang-gia .toolbar,body.role-staff #v-bang-gia .row-actions{display:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
+<div id="auth" hidden></div>
 <div class="app">
   <nav class="nav" aria-label="Điều hướng chính">
     <div class="nav-brand"><img data-logo alt="Hoàng Minh WCAR"><span>Báo giá xe điện</span></div>
@@ -255,6 +271,7 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
     <a href="#lich-su" data-v="lich-su"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Lịch sử</span></a>
     <a href="#khach" data-v="khach"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 5.2a3.4 3.4 0 010 6.3M18 14.8c2 .6 3.3 2.3 3.5 5.2"/></svg><span>Khách</span></a>
     <a href="#bang-gia" data-v="bang-gia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15l1.6-5.2A2 2 0 016.5 8.4h11a2 2 0 011.9 1.4L21 15v3h-2.2M3 15v3h2.2M3 15h18"/><circle cx="7.5" cy="18" r="1.8"/><circle cx="16.5" cy="18" r="1.8"/></svg><span>Bảng giá</span></a>
+    <a href="#nhan-vien" data-v="nhan-vien" id="nav-staff" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Nhân viên</span></a>
     <a href="#cai-dat" data-v="cai-dat"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg><span>Cài đặt</span></a>
   </nav>
 
@@ -285,6 +302,7 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
 
     <section class="view" id="v-lich-su" hidden>
       <div class="toolbar">
+        <select id="owner-h" class="ownersel" aria-label="Lọc theo nhân viên" hidden></select>
         <input id="h-search" type="search" placeholder="Tìm theo tên khách, số điện thoại, xe…" aria-label="Tìm báo giá" autocomplete="off">
         <div class="chips-f" id="h-filter"></div>
       </div>
@@ -293,6 +311,7 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
 
     <section class="view" id="v-khach" hidden>
       <div class="toolbar">
+        <select id="owner-c" class="ownersel" aria-label="Lọc theo nhân viên" hidden></select>
         <input id="c-search" type="search" placeholder="Tìm khách theo tên hoặc số điện thoại…" aria-label="Tìm khách" autocomplete="off">
         <div><button class="btn primary" type="button" data-act="cust-new">+ Thêm khách</button></div>
       </div>
@@ -303,6 +322,10 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
       <div id="cat-banner"></div>
       <div class="toolbar"><div><button class="btn primary" type="button" data-act="cat-new">+ Thêm xe</button></div></div>
       <div class="list cols" id="cat-list"></div>
+    </section>
+
+    <section class="view" id="v-nhan-vien" hidden>
+      <div id="staff-box"></div>
     </section>
 
     <section class="view" id="v-cai-dat" hidden>
@@ -319,6 +342,8 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
 <div class="modal" id="modal" hidden><div class="m-card" id="m-card" role="dialog" aria-modal="true"></div></div>
 
 <script src="jspdf.umd.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="fb.js"></script>
 <script>
 (function(){
 'use strict';
@@ -345,7 +370,7 @@ let toastT=null;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600);}
 
 /* ---------- constants ---------- */
-const VIEWS={'bao-gia':'Báo giá','lich-su':'Lịch sử báo giá','khach':'Khách hàng','bang-gia':'Bảng giá xe','cai-dat':'Cài đặt'};
+const VIEWS={'bao-gia':'Báo giá','lich-su':'Lịch sử báo giá','khach':'Khách hàng','bang-gia':'Bảng giá xe','nhan-vien':'Nhân viên','cai-dat':'Cài đặt'};
 const STATUS={moi:['Mới tạo','muted'],dagui:['Đã gửi khách','info'],canhnhac:['Đang cân nhắc','warn'],chot:['Đã chốt','good'],mat:['Không mua','off']};
 const ZONES={hcm:{label:'Hà Nội / TP.HCM',fee:14000000},city:{label:'Thành phố trực thuộc TW khác, thành phố thuộc tỉnh',fee:1000000},other:{label:'Khu vực còn lại',fee:200000}};
 const PRESETS=[['Giảm giá tiền mặt','discount'],['Ưu đãi từ hãng','discount'],['Tặng bộ sạc treo tường','gift'],['Tặng bảo hiểm vật chất 1 năm','gift'],['Tặng phim cách nhiệt','gift'],['Tặng thảm sàn, phụ kiện','gift']];
@@ -357,25 +382,125 @@ const DEF=()=>({dealer:'',seller:'',phone:'',address:'',validDays:7,province:'',
 function mergeSettings(s){const d=DEF();if(!s)return d;return clone(Object.assign(d,s,{fees:Object.assign(d.fees,s.fees||{}),loan:Object.assign(d.loan,s.loan||{})}));}
 
 const SEED_DATA={"catalog":{"m_bestune_xiaoma":{"brand":"Bestune","model":"Xiaoma","spec":"4 chỗ","sample":false,"variants":[{"name":"170KM","price":199000000,"promos":[{"label":"Hỗ trợ chuyển đổi xanh","amount":5000000,"type":"discount"},{"label":"Sạc cầm tay 3kW, ổ giả lập tiếp địa","amount":0,"type":"gift"},{"label":"Sạc AC 7kW chuẩn GPT","amount":0,"type":"gift"},{"label":"Đầu adapter chuyển đổi sạc AC từ GPT sang CCS2","amount":2000000,"type":"gift"},{"label":"Chọn 1 trong 3 quà: thảm sàn + film cách nhiệt + ghế bọc da / màn hình trung tâm 9 inch / miễn phí sơn đổi màu (hoặc quy đổi 5 triệu)","amount":0,"type":"gift"}]},{"name":"Eco ghế nỉ","price":232000000,"promos":[{"label":"Trụ sạc 7kW","amount":0,"type":"gift"},{"label":"03 năm bảo dưỡng miễn phí","amount":0,"type":"gift"},{"label":"03 năm cứu hộ miễn phí","amount":0,"type":"gift"},{"label":"01 thẻ VETC","amount":0,"type":"gift"},{"label":"Film cách nhiệt full xe","amount":0,"type":"gift"},{"label":"Thảm sàn rối","amount":0,"type":"gift"},{"label":"Nước hoa trong xe","amount":0,"type":"gift"}]},{"name":"Eco ghế da","price":238000000,"promos":[{"label":"Trụ sạc 7kW","amount":0,"type":"gift"},{"label":"03 năm bảo dưỡng miễn phí","amount":0,"type":"gift"},{"label":"03 năm cứu hộ miễn phí","amount":0,"type":"gift"},{"label":"01 thẻ VETC","amount":0,"type":"gift"},{"label":"Film cách nhiệt full xe","amount":0,"type":"gift"},{"label":"Thảm sàn rối","amount":0,"type":"gift"},{"label":"Nước hoa trong xe","amount":0,"type":"gift"}]},{"name":"Plus","price":258000000,"promos":[{"label":"Trụ sạc 7kW","amount":0,"type":"gift"},{"label":"03 năm bảo dưỡng miễn phí","amount":0,"type":"gift"},{"label":"03 năm cứu hộ miễn phí","amount":0,"type":"gift"},{"label":"01 thẻ VETC","amount":0,"type":"gift"},{"label":"Film cách nhiệt full xe","amount":0,"type":"gift"},{"label":"Thảm sàn rối","amount":0,"type":"gift"},{"label":"Nước hoa trong xe","amount":0,"type":"gift"}]}],"colors":[]},"m_dongfeng_box":{"brand":"Dongfeng","model":"Box","spec":"5 chỗ","sample":false,"variants":[{"name":"E2 430Km","price":589000000,"promos":[{"label":"Quy đổi hỗ trợ 50% lãi vay năm 1 thành tiền mặt","amount":20000000,"type":"discount"},{"label":"Voucher sạc miễn phí 3 năm (hoặc quy đổi 30 triệu)","amount":0,"type":"gift"},{"label":"Tặng 1 năm BHTV và TNDS","amount":0,"type":"gift"}]},{"name":"E3 430Km","price":589000000,"promos":[{"label":"Quy đổi hỗ trợ 50% lãi vay năm 1 thành tiền mặt","amount":30000000,"type":"discount"},{"label":"Voucher sạc miễn phí 3 năm (hoặc quy đổi 30 triệu)","amount":0,"type":"gift"},{"label":"Tặng 1 năm BHTV và TNDS","amount":0,"type":"gift"}]},{"name":"E2 330Km","price":549000000,"promos":[{"label":"Quy đổi hỗ trợ 50% lãi vay năm 1 thành tiền mặt","amount":20000000,"type":"discount"},{"label":"Voucher sạc miễn phí 3 năm (hoặc quy đổi 30 triệu)","amount":0,"type":"gift"},{"label":"Tặng 1 năm BHTV và TNDS","amount":0,"type":"gift"}]}],"colors":[]},"m_wuling_bingo":{"brand":"Wuling","model":"Bingo","spec":"5 chỗ","sample":false,"variants":[{"name":"333Km Base","price":399000000,"promos":[{"label":"Giảm tiền mặt","amount":12000000,"type":"discount"},{"label":"Thảm sàn, film cách nhiệt","amount":0,"type":"gift"},{"label":"Sạc 2kW","amount":0,"type":"gift"},{"label":"Trụ sạc CCS2 7kW lắp đặt tại nhà","amount":14000000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":5000000,"type":"gift"}]},{"name":"333Km Plus","price":469000000,"promos":[{"label":"Giảm trực tiếp vào giá","amount":50000000,"type":"discount"},{"label":"Film cách nhiệt, thảm sàn","amount":0,"type":"gift"},{"label":"Bộ sạc AC 7kW","amount":14000000,"type":"gift"},{"label":"Xe đạp điện gấp gọn","amount":14010000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":5000000,"type":"gift"}]},{"name":"410Km Max","price":499000000,"promos":[{"label":"Giảm trực tiếp vào giá","amount":50000000,"type":"discount"},{"label":"Film cách nhiệt, thảm sàn","amount":0,"type":"gift"},{"label":"Bộ sạc AC 7kW","amount":14000000,"type":"gift"},{"label":"Xe đạp điện gấp gọn","amount":14010000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":5000000,"type":"gift"}]}],"colors":[]},"m_wuling_darion":{"brand":"Wuling","model":"Darion","spec":"","sample":false,"variants":[{"name":"450KM","price":750000000,"promos":[{"label":"Ưu đãi tiền mặt","amount":40000000,"type":"discount"},{"label":"01 năm bảo hiểm thân vỏ","amount":0,"type":"gift"},{"label":"Trụ sạc AC 7kW","amount":0,"type":"gift"},{"label":"Dán film cách nhiệt full xe","amount":0,"type":"gift"},{"label":"Thảm sàn rối","amount":0,"type":"gift"}]},{"name":"500KM","price":820000000,"promos":[{"label":"Ưu đãi tiền mặt","amount":40000000,"type":"discount"},{"label":"01 năm bảo hiểm thân vỏ","amount":0,"type":"gift"},{"label":"Trụ sạc AC 7kW","amount":0,"type":"gift"},{"label":"Dán film cách nhiệt full xe","amount":0,"type":"gift"},{"label":"Thảm sàn rối","amount":0,"type":"gift"}]}],"colors":[]},"m_wuling_grango":{"brand":"Wuling","model":"Grango","spec":"7 chỗ","sample":false,"variants":[{"name":"Tiêu chuẩn","price":499000000,"promos":[{"label":"Giảm trực tiếp tiền mặt","amount":12000000,"type":"discount"},{"label":"Thảm sàn, film cách nhiệt","amount":0,"type":"gift"},{"label":"Sạc 7kW","amount":14000000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":5000000,"type":"gift"}]}],"colors":[]},"m_wuling_macaron":{"brand":"Wuling","model":"Macaron","spec":"4 chỗ","sample":false,"variants":[{"name":"LV1 205Km","price":269000000,"promos":[{"label":"Thảm sàn, film cách nhiệt","amount":0,"type":"gift"},{"label":"Bộ sạc AC 7kW","amount":14000000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":4500000,"type":"gift"}]},{"name":"LV2 305Km","price":329000000,"promos":[{"label":"Thảm sàn, film cách nhiệt","amount":0,"type":"gift"},{"label":"Bộ sạc AC 7kW","amount":14000000,"type":"gift"},{"label":"Sạc miễn phí tại trụ sạc Hoàng Minh ABB 1 năm","amount":5000000,"type":"gift"}]}],"colors":[]}},"settings":{"main":{"address":"37D, Dương Thị Mười, Trung Mỹ Tây, Hồ Chí Minh","dealer":"CÔNG TY TNHH BÁN XE NĂNG LƯỢNG MỚI - HOÀNG MINH WCAR","fees":{"bhvcRate":1.55,"inspection":140000,"mica":500000,"plate":14000000,"plateZone":"hcm","regRate":0,"road":1560000,"service":2500000,"tnds":561000},"footer":"Báo giá chỉ mang tính tham khảo, có thể thay đổi theo chính sách tại thời điểm ký hợp đồng.","loan":{"downPct":35,"method":"giam-dan","rate":11,"years":5},"phone":"0877921436","province":"TP.HCM","provinces":[{"fee":2500000,"name":"TP.HCM"},{"fee":3000000,"name":"Long An"},{"fee":3300000,"name":"Tiền Giang"},{"fee":3500000,"name":"Bến Tre"},{"fee":3000000,"name":"Bình Dương"},{"fee":3000000,"name":"Đồng Nai"},{"fee":3500000,"name":"Tây Ninh"},{"fee":3000000,"name":"Vũng Tàu"},{"fee":4000000,"name":"Bình Phước"},{"fee":4000000,"name":"Đồng Tháp"},{"fee":5500000,"name":"Lâm Đồng"},{"fee":5500000,"name":"An Giang"},{"fee":4500000,"name":"Hậu Giang"},{"fee":6500000,"name":"Kiên Giang"},{"fee":6500000,"name":"Cà Mau"},{"fee":5500000,"name":"Bạc Liêu"},{"fee":4500000,"name":"Cần Thơ"},{"fee":4500000,"name":"Trà Vinh"},{"fee":4000000,"name":"Vĩnh Long"},{"fee":5000000,"name":"Sóc Trăng"},{"fee":6500000,"name":"Nha Trang"},{"fee":5500000,"name":"Ninh Thuận"},{"fee":4500000,"name":"Bình Thuận"},{"fee":6700000,"name":"Đắk Lắk"},{"fee":6100000,"name":"Đắk Nông"}],"seller":"Nguyễn Văn Duy","validDays":7,"warranty":"Thân vỏ 3 năm hoặc 100.000 km\nPin 5 năm hoặc 120.000 km"}},"customers":{},"quotes":{}};window.SEED=SEED_DATA;
+
+/* ---------- cloud mode (Firebase): đăng nhập, phân quyền, admin xem tất cả ---------- */
+const CLOUD=!!(window.FIREBASE_CONFIG&&window.FB);window.__CLOUD=CLOUD;
+let ME=null,ROLE=null,PROFILE=null,OWNER='all',REG={};
+function cloudWatch(coll,cb){
+  const col=FB.collection(FB.db,coll);let q=col;
+  if((coll==='customers'||coll==='quotes')&&ROLE!=='admin')q=FB.query(col,FB.where('ownerId','==',ME.uid));
+  return FB.onSnapshot(q,sn=>cb(sn.docs.map(d=>Object.assign({id:d.id},d.data())),sn.metadata),e=>cb(null,null,e));
+}
+async function cloudSet(coll,id,data){await FB.setDoc(FB.doc(FB.db,coll,id),JSON.parse(JSON.stringify(data)));}
+async function cloudDel(coll,id){await FB.deleteDoc(FB.doc(FB.db,coll,id));}
+const staffName=id=>{const u=S.staff.find(x=>x.id===id);return u?u.name||u.email||'':'';};
+function ownerLabel(r){return staffName(r.ownerId)||r.ownerName||'Không rõ';}
+function ownerTag(r){return(CLOUD&&ROLE==='admin'&&r.ownerId&&ME&&r.ownerId!==ME.uid)?'<div class="qc-sub"><b>Nhân viên: '+esc(ownerLabel(r))+'</b></div>':'';}
+function renderOwnerFilters(){
+  const show=CLOUD&&ROLE==='admin';
+  ['owner-h','owner-c'].forEach(id=>{const el=$('#'+id);if(!el)return;el.hidden=!show;if(!show)return;
+    const ids=[];S.staff.forEach(u=>ids.push(u.id));S.quotes.concat(S.customers).forEach(r=>{if(r.ownerId&&!ids.includes(r.ownerId))ids.push(r.ownerId);});
+    el.innerHTML='<option value="all">Tất cả nhân viên</option>'+ids.map(i=>'<option value="'+esc(i)+'"'+(OWNER===i?' selected':'')+'>'+esc(i===ME.uid?'Của tôi':(staffName(i)||'Nhân viên khác'))+'</option>').join('');
+    el.value=OWNER;});
+}
+document.addEventListener('change',e=>{const t=e.target;if(t&&(t.id==='owner-h'||t.id==='owner-c')){OWNER=t.value;renderOwnerFilters();renderHistory();renderCustomers();}});
+function renderStaff(){
+  const box=$('#staff-box');if(!box||!CLOUD||ROLE!=='admin')return;
+  const cnt=(arr,id)=>arr.filter(x=>x.ownerId===id).length;
+  const pend=S.pending.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  let h='<section class="card"><h2>Chờ duyệt ('+pend.length+')</h2>'+(pend.length?pend.map(p=>'<div class="srow"><div class="c-main"><div class="c-name">'+esc(p.name||'(chưa có tên)')+'</div><div class="qc-sub">'+esc(p.email||'')+(p.phone?' · '+esc(p.phone):'')+'</div></div><div class="acts"><button type="button" class="btn sm primary" data-act="st-approve" data-id="'+esc(p.id)+'">Duyệt</button><button type="button" class="btn sm danger" data-act="st-reject" data-id="'+esc(p.id)+'">Từ chối</button></div></div>').join(''):'<p class="hint">Không có tài khoản nào đang chờ duyệt. Nhân viên tự đăng ký trong app, rồi bạn duyệt ở đây.</p>')+'</section>';
+  const st=S.staff.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
+  h+='<section class="card" style="margin-top:14px"><h2>Nhân viên ('+st.length+')</h2>'+(st.length?st.map(u=>{const me=u.id===ME.uid;
+    return '<div class="srow"><div class="c-main"><div class="c-name">'+esc(u.name||u.email||'')+(me?'<span class="tag">Bạn (Admin)</span>':'')+(u.active?'':'<span class="tag">Đã tắt</span>')+'</div><div class="qc-sub">'+esc(u.email||'')+(u.phone?' · '+esc(u.phone):'')+'</div><div class="qc-sub">'+cnt(S.quotes,u.id)+' báo giá · '+cnt(S.customers,u.id)+' khách</div></div>'
+    +'<div class="acts"><button type="button" class="btn sm" data-act="st-view" data-id="'+esc(u.id)+'">Xem báo giá</button>'+(me?'':'<button type="button" class="btn sm'+(u.active?' danger':'')+'" data-act="st-toggle" data-id="'+esc(u.id)+'">'+(u.active?'Tắt tài khoản':'Bật lại')+'</button>')+'</div></div>';}).join(''):'<p class="hint">Chưa có nhân viên nào.</p>')+'</section>';
+  box.innerHTML=h;
+}
+/* --- giao diện đăng nhập --- */
+const AUTHERR={'auth/invalid-credential':'Email hoặc mật khẩu chưa đúng.','auth/wrong-password':'Email hoặc mật khẩu chưa đúng.','auth/user-not-found':'Email hoặc mật khẩu chưa đúng.','auth/email-already-in-use':'Email này đã được đăng ký. Hãy đăng nhập.','auth/weak-password':'Mật khẩu cần ít nhất 6 ký tự.','auth/invalid-email':'Email chưa đúng định dạng.','auth/too-many-requests':'Thử quá nhiều lần, hãy đợi vài phút rồi thử lại.','auth/network-request-failed':'Không có mạng, hãy kiểm tra kết nối.','auth/missing-password':'Hãy nhập mật khẩu.'};
+const aerr=e=>AUTHERR[e&&e.code]||'Có lỗi xảy ra, hãy thử lại.';
+let AUTHMODE='load';
+function showAuth(mode,msg){AUTHMODE=mode;const a=$('#auth');a.hidden=false;
+  const logo='<img class="al" src="'+LOGO_URL+'" alt="Hoàng Minh WCAR">';
+  const f=(id,lab,type,ph,ac)=>'<div class="field"><label for="'+id+'">'+lab+'</label><input id="'+id+'" type="'+type+'" placeholder="'+(ph||'')+'" autocomplete="'+(ac||'off')+'"></div>';
+  let h='';
+  if(mode==='load')h='<div class="auth-card">'+logo+'<p class="sub" style="margin:0">Đang tải…</p></div>';
+  else if(mode==='login')h='<form class="auth-card" id="auth-form" data-m="login">'+logo+'<h2>Đăng nhập</h2><p class="sub">Báo giá xe điện Hoàng Minh WCAR</p>'+f('a-email','Email','email','email@gmail.com','username')+f('a-pass','Mật khẩu','password','','current-password')+'<div class="auth-err" id="a-err">'+esc(msg||'')+'</div><button class="btn primary" type="submit">Đăng nhập</button><button type="button" class="lnk" data-auth="reset">Quên mật khẩu?</button><button type="button" class="lnk" data-auth="to-reg">Chưa có tài khoản? Đăng ký</button></form>';
+  else if(mode==='register')h='<form class="auth-card" id="auth-form" data-m="register">'+logo+'<h2>Đăng ký</h2><p class="sub">Sau khi đăng ký, admin sẽ duyệt tài khoản của bạn.</p>'+f('a-name','Họ và tên','text','VD: Nguyễn Văn A','name')+f('a-phone','Số điện thoại / Zalo','tel','09xx xxx xxx','tel')+f('a-email','Email','email','email@gmail.com','username')+f('a-pass','Mật khẩu (từ 6 ký tự)','password','','new-password')+'<div class="auth-err" id="a-err">'+esc(msg||'')+'</div><button class="btn primary" type="submit">Đăng ký</button><button type="button" class="lnk" data-auth="to-login">Đã có tài khoản? Đăng nhập</button></form>';
+  else if(mode==='wait')h='<div class="auth-card">'+logo+'<h2>Chờ admin duyệt</h2><p class="sub">Tài khoản <b>'+esc(ME?ME.email:'')+'</b> đã đăng ký. Khi admin duyệt xong, bấm "Kiểm tra lại" để vào app.'+(ME&&!ME.emailVerified?'<br><br>Nếu bạn là admin: mở email xác nhận mà hệ thống đã gửi, bấm vào liên kết, rồi bấm "Kiểm tra lại".':'')+'</p><div class="auth-ok" id="a-ok">'+esc(msg||'')+'</div><button class="btn primary" type="button" data-auth="recheck">Kiểm tra lại</button>'+(ME&&!ME.emailVerified?'<button type="button" class="lnk" data-auth="resend">Gửi lại email xác nhận</button>':'')+'<button type="button" class="lnk" data-auth="out">Đăng xuất</button></div>';
+  else if(mode==='off')h='<div class="auth-card">'+logo+'<h2>Tài khoản đã bị tắt</h2><p class="sub">Hãy liên hệ admin để được bật lại.</p><button type="button" class="lnk" data-auth="out">Đăng xuất</button></div>';
+  a.innerHTML=h;const first=a.querySelector('input');if(first&&mode!=='load')setTimeout(()=>{if(!a.contains(document.activeElement)||document.activeElement===document.body)first.focus();},30);
+}
+const hideAuth=()=>{$('#auth').hidden=true;$('#auth').innerHTML='';};
+document.addEventListener('submit',async e=>{const fm=e.target;if(!fm||fm.id!=='auth-form')return;e.preventDefault();
+  const v=id=>(($('#'+id)||{}).value||'').trim();const email=v('a-email'),pass=($('#a-pass')||{}).value||'',mode=fm.dataset.m;
+  const btn=fm.querySelector('button[type=submit]');btn.disabled=true;
+  try{
+    if(mode==='login'){await FB.signInWithEmailAndPassword(FB.auth,email,pass);}
+    else{const name=v('a-name'),phone=v('a-phone');if(!name){btn.disabled=false;$('#a-err').textContent='Hãy nhập họ và tên.';return;}
+      REG={name,phone};const cr=await FB.createUserWithEmailAndPassword(FB.auth,email,pass);try{await FB.updateProfile(cr.user,{displayName:name});}catch(x){}try{await FB.sendEmailVerification(cr.user);}catch(x){}}
+  }catch(err){btn.disabled=false;const el=$('#a-err');if(el)el.textContent=aerr(err);}
+});
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-auth]');if(!b)return;const a=b.dataset.auth;
+  if(a==='to-reg')showAuth('register');else if(a==='to-login')showAuth('login');
+  else if(a==='reset'){const em=(($('#a-email')||{}).value||'').trim();if(!em){$('#a-err').textContent='Hãy nhập email vào ô trên rồi bấm lại.';return;}try{await FB.sendPasswordResetEmail(FB.auth,em);$('#a-err').style.color='var(--good)';$('#a-err').textContent='Đã gửi email đặt lại mật khẩu.';}catch(err){$('#a-err').textContent=aerr(err);}}
+  else if(a==='out'){try{await FB.signOut(FB.auth);}catch(x){}location.reload();}
+  else if(a==='resend'){try{await FB.sendEmailVerification(FB.auth.currentUser);showAuth('wait','Đã gửi lại email xác nhận.');}catch(err){showAuth('wait',aerr(err));}}
+  else if(a==='recheck'){try{await FB.auth.currentUser.reload();await FB.auth.currentUser.getIdToken(true);}catch(x){}ME=FB.auth.currentUser;const r=await resolveRole(ME);if(r==='admin'||r==='staff')location.reload();else showAuth(r==='off'?'off':'wait','Chưa được duyệt hoặc chưa xác nhận email.');}
+});
+const roleKey=u=>'bgia:role:'+u.uid;
+async function resolveRole(u){
+  const col=n=>FB.collection(FB.db,n),dc=(n,id)=>FB.doc(FB.db,n,id);
+  const cache=()=>{try{return JSON.parse(lsGet(roleKey(u))||'null');}catch(e){return null;}};
+  const useCache=c=>{ROLE=c.role;PROFILE=c.profile;return c.role;};
+  // admin? chỉ admin mới đọc được danh sách "pending"
+  let isAdm=false,netErr=false;
+  try{await FB.getDocs(FB.query(col('pending'),FB.limit(1)));isAdm=true;}catch(e){if(e&&(e.code==='unavailable'||!navigator.onLine))netErr=true;}
+  if(netErr){const c=cache();if(c)return useCache(c);}
+  try{
+    if(isAdm){ROLE='admin';let sd=await FB.getDoc(dc('staff',u.uid));
+      if(!sd.exists()){let pd=null;try{const x=await FB.getDoc(dc('pending',u.uid));if(x.exists())pd=x.data();}catch(e){}
+        const prof={name:(pd&&pd.name)||REG.name||u.displayName||(u.email||'').split('@')[0],phone:(pd&&pd.phone)||REG.phone||'',email:u.email||'',active:true,createdAt:new Date().toISOString()};
+        await FB.setDoc(dc('staff',u.uid),prof);try{await FB.deleteDoc(dc('pending',u.uid));}catch(e){}PROFILE=prof;}
+      else PROFILE=sd.data();
+      lsSet(roleKey(u),JSON.stringify({role:'admin',profile:PROFILE}));return 'admin';}
+    const sd=await FB.getDoc(dc('staff',u.uid));
+    if(sd.exists()){if(sd.data().active){ROLE='staff';PROFILE=sd.data();lsSet(roleKey(u),JSON.stringify({role:'staff',profile:PROFILE}));return 'staff';}return 'off';}
+    const pr=dc('pending',u.uid),pd=await FB.getDoc(pr);
+    if(!pd.exists())await FB.setDoc(pr,{name:REG.name||u.displayName||(u.email||'').split('@')[0],phone:REG.phone||'',email:u.email||'',createdAt:new Date().toISOString()});
+    return 'pending';
+  }catch(e){const c=cache();if(c&&(!navigator.onLine||(e&&e.code==='unavailable')))return useCache(c);return 'pending';}
+}
+function applyRole(){document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
+function cloudGate(){return new Promise(resolve=>{
+  FB.init(window.FIREBASE_CONFIG);let done=false;
+  FB.onAuthStateChanged(FB.auth,async u=>{
+    if(!u){ME=null;ROLE=null;PROFILE=null;showAuth('login');return;}
+    ME=u;const r=await resolveRole(u);
+    if(r==='admin'||r==='staff'){if(!done){done=true;hideAuth();applyRole();resolve(true);}}
+    else showAuth(r==='off'?'off':'wait');
+  });
+});}
+
 /* ---------- data layer ---------- */
 const store={db:null,mode:'pending',mem:{},lis:{},
-  async init(){let db=null;try{db=window.claude&&window.claude.use?await window.claude.use('db'):null;}catch(e){db=null;}this.db=db;this.mode=db?'db':'local';},
+  async init(){if(CLOUD){this.mode='cloud';return;}let db=null;try{db=window.claude&&window.claude.use?await window.claude.use('db'):null;}catch(e){db=null;}this.db=db;this.mode=db?'db':'local';},
   watch(coll,cb){
+    if(this.mode==='cloud')return cloudWatch(coll,cb);
     if(this.db){return this.db.collection(coll).onSnapshot(s=>cb(s.docs.map(d=>Object.assign({id:d.id},d.data())),s.metadata),e=>cb(null,null,e));}
     let o={};try{o=JSON.parse(lsGet('bgia:'+coll)||'{}');}catch(e){}
     if(!lsGet('bgia:seeded:'+coll)){const sd=(window.SEED||{})[coll]||{};Object.keys(sd).forEach(k=>{if(!o[k])o[k]=sd[k];});lsSet('bgia:'+coll,JSON.stringify(o));lsSet('bgia:seeded:'+coll,'1');}
     this.mem[coll]=o;(this.lis[coll]=this.lis[coll]||[]).push(cb);this.fire(coll);return function(){};
   },
   fire(coll){const l=Object.keys(this.mem[coll]).map(id=>Object.assign({id},this.mem[coll][id]));(this.lis[coll]||[]).forEach(f=>f(clone(l),{fromCache:false}));},
-  async set(coll,id,data){if(this.db){await this.db.collection(coll).doc(id).set(data);return;}this.mem[coll][id]=clone(data);lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);},
-  async del(coll,id){if(this.db){await this.db.collection(coll).doc(id).delete();return;}delete this.mem[coll][id];lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);}
+  async set(coll,id,data){if(this.mode==='cloud'){await cloudSet(coll,id,data);return;}if(this.db){await this.db.collection(coll).doc(id).set(data);return;}this.mem[coll][id]=clone(data);lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);},
+  async del(coll,id){if(this.mode==='cloud'){await cloudDel(coll,id);return;}if(this.db){await this.db.collection(coll).doc(id).delete();return;}delete this.mem[coll][id];lsSet('bgia:'+coll,JSON.stringify(this.mem[coll]));this.fire(coll);}
 };
-async function put(coll,id,data){try{await store.set(coll,id,data);return true;}catch(e){toast(e&&e.code==='quota_exceeded'?'Kho dữ liệu đã đầy':'Không lưu được, hãy thử lại');return false;}}
+async function put(coll,id,data){try{if(CLOUD&&(coll==='customers'||coll==='quotes')){const ex=(S[coll]||[]).find(x=>x.id===id);data=Object.assign({},data,{ownerId:(ex&&ex.ownerId)||ME.uid,ownerName:(ex&&ex.ownerName)||(PROFILE&&PROFILE.name)||''});}await store.set(coll,id,data);return true;}catch(e){toast(e&&e.code==='quota_exceeded'?'Kho dữ liệu đã đầy':'Không lưu được, hãy thử lại');return false;}}
 async function remove(coll,id){try{await store.del(coll,id);return true;}catch(e){toast('Không xóa được, hãy thử lại');return false;}}
 const body=r=>{const o=clone(r);delete o.id;return o;};
 
 /* ---------- state ---------- */
-const S={catalog:[],customers:[],quotes:[],settings:mergeSettings(null),loaded:{catalog:false,customers:false,quotes:false,settings:false},err:null,timeout:false};
+const S={staff:[],pending:[],catalog:[],customers:[],quotes:[],settings:mergeSettings(null),loaded:{catalog:false,customers:false,quotes:false,settings:false},err:null,timeout:false};
 let Q=null,CE=null,H={q:'',st:'all'},C={q:''},DL=null,MODAL={};
 const catById=id=>S.catalog.find(x=>x.id===id);
 
@@ -605,7 +730,7 @@ function refresh(){
   const sv=$('#btn-save');if(sv)sv.textContent=Q.id?'Cập nhật báo giá':'Lưu báo giá';
 }
 let draftT=null;
-function touch(){Q._dirty=true;clearTimeout(draftT);draftT=setTimeout(()=>lsSet('bgia:draft',JSON.stringify(Q)),600);}
+function touch(){Q._dirty=true;if(CLOUD&&ME)Q._owner=ME.uid;clearTimeout(draftT);draftT=setTimeout(()=>lsSet('bgia:draft',JSON.stringify(Q)),600);}
 function applyPromos(v){if(!v)return;if(!Q.promos.length||Q.promosAuto){Q.promos=clone(v.promos||[]);Q.promosAuto=true;}}
 function selectModel(id){const car=catById(id);if(!car)return;Q.catalogId=id;Q.carName=(car.brand+' '+car.model).trim();Q.carSpec=car.spec||'';
   const v=car.variants[0];Q.variantName=v?v.name:'';Q.variantPrice=v?v.price:0;const co=car.colors[0];Q.colorName=co?co.name:'';Q.colorExtra=co?(co.extra||0):0;applyPromos(v);}
@@ -619,11 +744,11 @@ async function saveQuote(){
   let cid=Q.customerId;
   if(name||phone){
     const pd=digits(phone);
-    let cu=(cid&&S.customers.find(x=>x.id===cid))||(pd&&S.customers.find(x=>digits(x.phone)===pd))||null;
+    const mineC=CLOUD?S.customers.filter(x=>x.ownerId===ME.uid):S.customers;let cu=(cid&&S.customers.find(x=>x.id===cid))||(pd&&mineC.find(x=>digits(x.phone)===pd))||null;
     if(cu){cid=cu.id;if((!cu.phone&&phone)||(!cu.name&&name)){const b=body(cu);b.name=cu.name||name;b.phone=cu.phone||phone;await put('customers',cid,b);}}
     else{cid=uid('c_');if(!await put('customers',cid,{name:name||'Khách chưa đặt tên',phone,note:'',createdAt:now}))return;}
   }
-  const id=Q.id||uid('q_'),rec=clone(Q);delete rec.id;delete rec._dirty;
+  const id=Q.id||uid('q_'),rec=clone(Q);delete rec.id;delete rec._dirty;delete rec._owner;
   Object.assign(rec,{customerId:cid||null,rolling:c.rolling,net:c.net,monthly:c.loan?c.loan.first:0,createdAt:Q.createdAt||now,updatedAt:now});
   if(!await put('quotes',id,rec))return;
   Q.id=id;Q.createdAt=rec.createdAt;Q.customerId=cid||null;lsSet('bgia:draft',JSON.stringify(Q));refresh();toast(rec.updatedAt===rec.createdAt?'Đã lưu báo giá':'Đã cập nhật báo giá');
@@ -644,13 +769,13 @@ function renderHistory(){
   $('#h-filter').innerHTML=[['all','Tất cả']].concat(Object.keys(STATUS).map(k=>[k,STATUS[k][0]])).map(f=>'<button type="button" class="'+(H.st===f[0]?'on':'')+'" data-act="h-filter" data-st="'+f[0]+'">'+f[1]+'</button>').join('');
   const box=$('#h-list');if(!S.loaded.quotes){box.innerHTML='<p class="hint">Đang tải…</p>';return;}
   const q=H.q.trim().toLowerCase(),qd=digits(H.q);
-  const rows=S.quotes.filter(r=>(H.st==='all'||(r.status||'moi')===H.st)&&(!q||[r.customerName,r.carName,r.variantName].join(' ').toLowerCase().includes(q)||(qd&&digits(r.customerPhone).includes(qd))))
+  const rows=S.quotes.filter(r=>(OWNER==='all'||r.ownerId===OWNER)&&(H.st==='all'||(r.status||'moi')===H.st)&&(!q||[r.customerName,r.carName,r.variantName].join(' ').toLowerCase().includes(q)||(qd&&digits(r.customerPhone).includes(qd))))
     .sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
   if(!rows.length){box.innerHTML='<div class="empty" style="grid-column:1/-1"><span>'+(S.quotes.length?'Không có báo giá nào khớp bộ lọc.':'Chưa có báo giá nào. Báo giá bạn lưu sẽ nằm ở đây.')+'</span>'+(S.quotes.length?'':'<a class="btn primary" href="#bao-gia">Tạo báo giá đầu tiên</a>')+'</div>';return;}
   box.innerHTML=rows.map(r=>{const st=STATUS[r.status||'moi']||STATUS.moi;
     return '<article class="card qc"><div class="qc-top"><div><div class="qc-name">'+esc(r.customerName||'Khách chưa đặt tên')+'</div><div class="qc-sub">'+esc(r.customerPhone||'Chưa có số điện thoại')+'</div></div>'
     +'<select class="st st-'+st[1]+'" data-act="status" data-id="'+esc(r.id)+'" aria-label="Trạng thái báo giá">'+Object.keys(STATUS).map(k=>'<option value="'+k+'"'+(k===(r.status||'moi')?' selected':'')+'>'+STATUS[k][0]+'</option>').join('')+'</select></div>'
-    +'<div class="qc-car">'+esc(r.carName)+(r.variantName?' · '+esc(r.variantName):'')+(r.colorName?' · '+esc(r.colorName):'')+'</div>'
+    +ownerTag(r)+'<div class="qc-car">'+esc(r.carName)+(r.variantName?' · '+esc(r.variantName):'')+(r.colorName?' · '+esc(r.colorName):'')+'</div>'
     +'<div class="qc-price">'+money(r.rolling||0)+'<small>lăn bánh</small></div>'+(r.loanOn&&r.monthly?'<div class="qc-sub">Trả góp từ '+money(r.monthly)+'/tháng</div>':'')
     +'<div class="qc-foot"><span class="qc-sub">'+fmtDate(new Date(r.updatedAt||r.createdAt))+'</span><div class="acts"><button type="button" class="btn sm" data-act="open-q" data-id="'+esc(r.id)+'">Mở</button><button type="button" class="btn sm" data-act="dup-q" data-id="'+esc(r.id)+'">Nhân bản</button><button type="button" class="btn sm danger" data-act="del-q" data-id="'+esc(r.id)+'">Xóa</button></div></div></article>';}).join('');
 }
@@ -659,11 +784,11 @@ function renderHistory(){
 function renderCustomers(){
   const box=$('#c-list');if(!S.loaded.customers){box.innerHTML='<p class="hint">Đang tải…</p>';return;}
   const q=C.q.trim().toLowerCase(),qd=digits(C.q);
-  const rows=S.customers.filter(c=>!q||c.name.toLowerCase().includes(q)||(qd&&digits(c.phone).includes(qd))).sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+  const rows=S.customers.filter(c=>(OWNER==='all'||c.ownerId===OWNER)).filter(c=>!q||c.name.toLowerCase().includes(q)||(qd&&digits(c.phone).includes(qd))).sort((a,b)=>a.name.localeCompare(b.name,'vi'));
   if(!rows.length){box.innerHTML='<div class="empty" style="grid-column:1/-1"><span>'+(S.customers.length?'Không tìm thấy khách nào.':'Chưa có khách nào. Khách sẽ tự được lưu khi bạn lưu báo giá, hoặc thêm thủ công.')+'</span></div>';return;}
   box.innerHTML=rows.map(c=>{const qs=S.quotes.filter(x=>x.customerId===c.id);const last=qs.map(x=>x.updatedAt||x.createdAt).sort().pop();
     return '<article class="card crow"><div class="av" aria-hidden="true">'+esc((c.name.trim()[0]||'?').toUpperCase())+'</div><div class="c-main"><div class="c-name">'+esc(c.name)+'</div><div class="qc-sub">'+esc(c.phone||'Chưa có số điện thoại')+'</div>'
-    +'<div class="qc-sub">'+qs.length+' báo giá'+(last?' · gần nhất '+fmtDate(new Date(last)):'')+'</div>'+(c.note?'<div class="qc-sub">'+esc(c.note)+'</div>':'')+'</div>'
+    +ownerTag(c)+'<div class="qc-sub">'+qs.length+' báo giá'+(last?' · gần nhất '+fmtDate(new Date(last)):'')+'</div>'+(c.note?'<div class="qc-sub">'+esc(c.note)+'</div>':'')+'</div>'
     +'<div class="acts"><button type="button" class="btn sm primary" data-act="cust-quote" data-id="'+esc(c.id)+'">Báo giá mới</button>'+(c.phone?'<button type="button" class="btn sm" data-act="copy" data-copy="'+esc(c.phone)+'">Chép SĐT</button>':'')
     +'<button type="button" class="btn sm" data-act="cust-edit" data-id="'+esc(c.id)+'">Sửa</button><button type="button" class="btn sm danger" data-act="cust-del" data-id="'+esc(c.id)+'">Xóa</button></div></article>';}).join('');
 }
@@ -679,7 +804,7 @@ function renderCatalog(){
   const box=$('#cat-list');if(!S.loaded.catalog){box.innerHTML='<p class="hint">Đang tải bảng giá…</p>';return;}
   $('#cat-banner').innerHTML=S.catalog.some(m=>m.sample)?'<div class="banner"><span>Một số xe đang là dữ liệu mẫu, giá chỉ để minh họa. Bấm Sửa để nhập giá thật của bạn.</span></div>':'';
   let h='';if(CE&&CE.id==='new')h+=editorHTML();
-  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span></div>';
+  if(!S.catalog.length&&!CE)h+='<div class="empty" style="grid-column:1/-1"><span>Chưa có xe nào. Thêm dòng xe, các phiên bản và màu để dùng khi báo giá.</span>'+(CLOUD&&ROLE==='admin'?'<button type="button" class="btn primary" data-act="seed">Nạp bảng giá mẫu</button>':'')+'</div>';
   S.catalog.slice().sort((a,b)=>(a.brand+a.model).localeCompare(b.brand+b.model,'vi')).forEach(m=>{h+=(CE&&CE.id===m.id)?editorHTML():catCard(m);});
   box.innerHTML=h;
 }
@@ -705,13 +830,13 @@ function editorHTML(){const d=CE.draft;
   +'<div class="m-actions"><button type="button" class="btn primary" data-act="ce-save">Lưu xe</button><button type="button" class="btn" data-act="ce-cancel">Hủy</button>'+(CE.id!=='new'?'<button type="button" class="btn danger" data-act="ce-del">Xóa xe</button>':'')+'</div></article>';}
 
 /* ---------- settings ---------- */
-function renderSettings(){
+function renderSettingsFull(){
   const s=S.settings,f=s.fees,l=s.loan;
   const t=(p,label,val,ph,extra)=>'<div class="field"><label for="s-'+p+'">'+label+'</label><input id="s-'+p+'" type="text" data-s="'+p+'" data-t="text" autocomplete="off" placeholder="'+(ph||'')+'" value="'+esc(val)+'"'+(extra||'')+'></div>';
   const m=(p,label,val)=>'<div class="field"><label for="s-'+p+'">'+label+'</label>'+mIn('id="s-'+p+'" data-s="'+p+'"',val)+'</div>';
   const n=(p,label,val)=>'<div class="field"><label for="s-'+p+'">'+label+'</label>'+nIn('id="s-'+p+'" data-s="'+p+'"',val)+'</div>';
   $('#set-form').innerHTML='<section class="card"><h2>Thông tin của bạn</h2><p class="hint" style="margin-bottom:12px">Hiện ở đầu bảng báo giá gửi khách.</p><div class="grid2 stack">'
-    +t('dealer','Tên showroom / đại lý',s.dealer,'VD: Showroom ABC')+t('seller','Tên nhân viên kinh doanh',s.seller,'VD: Nguyễn Văn A')+t('phone','Số điện thoại / Zalo',s.phone,'09xx xxx xxx')+t('address','Địa chỉ showroom',s.address,'Số nhà, đường, quận')+'</div></section>'
+    +t('dealer','Tên showroom / đại lý',s.dealer,'VD: Showroom ABC')+(CLOUD?'':t('seller','Tên nhân viên kinh doanh',s.seller,'VD: Nguyễn Văn A')+t('phone','Số điện thoại / Zalo',s.phone,'09xx xxx xxx'))+t('address','Địa chỉ showroom',s.address,'Số nhà, đường, quận')+'</div></section>'
   +'<section class="card"><h2>Mặc định cho báo giá mới</h2><p class="hint" style="margin-bottom:12px">Các mức phí dưới đây là số tham khảo, hãy chỉnh theo thực tế tại địa phương. Chỉ áp dụng cho báo giá tạo mới.</p><div class="grid2">'
     +'<div class="field" style="grid-column:1/-1"><label for="s-zone">Khu vực đăng ký biển số</label><select id="s-zone" data-act="s-zone">'+Object.keys(ZONES).map(k=>'<option value="'+k+'"'+(k===f.plateZone?' selected':'')+'>'+esc(ZONES[k].label)+'</option>').join('')+'</select></div>'
     +m('fees.plate','Phí biển số (đ)',f.plate)+m('fees.inspection','Phí đăng kiểm (đ)',f.inspection)+m('fees.road','Phí đường bộ 1 năm (đ)',f.road)+m('fees.tnds','Bảo hiểm TNDS (đ)',f.tnds)+m('fees.service','Phí dịch vụ đăng ký, khi không chọn tỉnh (đ)',f.service)+m('fees.mica','Ép biển số mica (đ)',f.mica)
@@ -727,13 +852,23 @@ function renderSettings(){
     +'<button type="button" class="btn sm" data-act="prov-add">+ Thêm tỉnh</button></section>'
   +'<section class="card"><h2>Sao lưu dữ liệu</h2><p class="hint" style="margin-bottom:12px">Dữ liệu (khách, báo giá, bảng giá, cài đặt) chỉ lưu trên thiết bị này. Hãy tải bản sao lưu thỉnh thoảng, hoặc để chuyển sang điện thoại / máy tính khác bằng nút Khôi phục.</p><div class="m-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="bk-export">Tải bản sao lưu</button><button type="button" class="btn" data-act="bk-import">Khôi phục từ file</button></div><input type="file" id="bk-file" accept=".json,application/json" hidden></section>';
 }
+function renderSettings(){
+  if(!CLOUD){renderSettingsFull();return;}
+  if(ROLE==='admin'){renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());}
+  else $('#set-form').innerHTML=profileCardHTML();
+}
+function profileCardHTML(){const P=PROFILE||{};
+  return '<section class="card"><h2>Tài khoản của bạn</h2><p class="hint" style="margin-bottom:12px">Tên và số điện thoại này hiện trên báo giá bạn gửi khách. Đăng nhập: '+esc(ME?ME.email:'')+(ROLE==='admin'?' (Admin)':'')+'</p><div class="grid2 stack">'
+  +'<div class="field"><label for="pf-name">Tên của bạn</label><input id="pf-name" type="text" data-prof="name" autocomplete="off" value="'+esc(P.name||'')+'"></div>'
+  +'<div class="field"><label for="pf-phone">Số điện thoại / Zalo</label><input id="pf-phone" type="tel" data-prof="phone" autocomplete="off" value="'+esc(P.phone||'')+'"></div></div>'
+  +'<button type="button" class="btn" style="margin-top:14px" data-act="logout">Đăng xuất</button></section>';}
 let setT=null;
 function queueSettingsSave(){clearTimeout(setT);setT=setTimeout(async()=>{if(await put('settings','main',clone(S.settings)))toast('Đã lưu cài đặt');},900);}
 function setPath(o,p,v){const k=p.split('.');let t=o;while(k.length>1)t=t[k.shift()];t[k[0]]=v;}
 
 /* ---------- views / banner / sync ---------- */
 function setView(v){
-  if(!VIEWS[v])v='bao-gia';document.body.dataset.view=v;
+  if(!VIEWS[v]||(v==='nhan-vien'&&(!window.__CLOUD||ROLE!=='admin')))v='bao-gia';document.body.dataset.view=v;
   $$('.view').forEach(s=>{s.hidden=s.id!=='v-'+v;});$$('.nav a').forEach(a=>{const on=a.dataset.v===v;a.classList.toggle('on',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   $('#vt').textContent=VIEWS[v];$('#top-act').hidden=v!=='bao-gia';renderBanner();closePreview();window.scrollTo(0,0);
 }
@@ -755,11 +890,12 @@ function updateSync(){
 const inFocus=sel=>{const a=document.activeElement,r=$(sel);return !!(a&&r&&r.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName));};
 function onSnap(coll,list,meta,err){
   if(err){S.err=err;updateSync();return;}S.err=null;
-  if(coll==='settings'){S.settings=mergeSettings(list.find(x=>x.id==='main'));}else S[coll]=list;
+  if(coll==='settings'){S.settings=mergeSettings(list.find(x=>x.id==='main'));if(CLOUD&&PROFILE){S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';}}else S[coll]=list;
   S.loaded[coll]=true;updateSync();
   if(coll==='catalog'){ensureSelection();if(!inFocus('#qform'))fullRender();else refresh();if(!(CE&&inFocus('#cat-list')))renderCatalog();}
-  else if(coll==='customers'){fillCustList();renderCustomers();}
-  else if(coll==='quotes'){renderHistory();renderCustomers();}
+  else if(coll==='customers'){fillCustList();renderCustomers();renderOwnerFilters();}
+  else if(coll==='quotes'){renderHistory();renderCustomers();renderStaff();renderOwnerFilters();}
+  else if(coll==='staff'||coll==='pending'){renderStaff();renderOwnerFilters();renderHistory();renderCustomers();}
   else if(coll==='settings'){
     if(!Q.id&&!Q._dirty){Q=newQuote();ensureSelection();if(!inFocus('#qform'))fullRender();}else refresh();
     if(!inFocus('#set-form'))renderSettings();renderBanner();
@@ -823,6 +959,12 @@ const ACT={
   'ce-cancel'(){CE=null;renderCatalog();},
   'bk-export'(){const o={app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{}};['catalog','customers','quotes','settings'].forEach(c=>{try{o.data[c]=JSON.parse(lsGet('bgia:'+c)||'{}');}catch(e){o.data[c]={};}});saveFile('SaoLuu_BaoGia_'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(o)],{type:'application/json'}));},
   'bk-import'(){const f=$('#bk-file');if(f)f.click();},
+  async 'seed'(){const sd=SEED_DATA;for(const id of Object.keys(sd.catalog))await put('catalog',id,sd.catalog[id]);await put('settings','main',sd.settings.main);toast('Đã nạp bảng giá và cài đặt mẫu');},
+  async 'logout'(){try{await FB.signOut(FB.auth);}catch(e){}lsDel('bgia:draft');location.reload();},
+  async 'st-approve'(el){const pd=S.pending.find(x=>x.id===el.dataset.id);if(!pd)return;try{await FB.setDoc(FB.doc(FB.db,'staff',pd.id),{name:pd.name||'',phone:pd.phone||'',email:pd.email||'',active:true,approvedAt:new Date().toISOString()});await FB.deleteDoc(FB.doc(FB.db,'pending',pd.id));toast('Đã duyệt '+(pd.name||pd.email));}catch(e){toast('Không duyệt được, hãy thử lại');}},
+  'st-reject'(el){arm(el,'Bấm lần nữa để từ chối',async()=>{try{await FB.deleteDoc(FB.doc(FB.db,'pending',el.dataset.id));toast('Đã từ chối');}catch(e){toast('Không thực hiện được');}});},
+  async 'st-toggle'(el){const u=S.staff.find(x=>x.id===el.dataset.id);if(!u||u.id===ME.uid)return;try{await FB.setDoc(FB.doc(FB.db,'staff',u.id),Object.assign({},body(u),{active:!u.active}));toast(u.active?'Đã tắt tài khoản':'Đã bật lại tài khoản');}catch(e){toast('Không thực hiện được');}},
+  'st-view'(el){OWNER=el.dataset.id;renderOwnerFilters();renderHistory();renderCustomers();location.hash='#lich-su';},
   'prov-add'(){S.settings.provinces=S.settings.provinces||[];S.settings.provinces.push({name:'',fee:0});renderSettings();queueSettingsSave();},
   'prov-rm'(el){S.settings.provinces.splice(+el.dataset.i,1);renderSettings();queueSettingsSave();},
   'cevp-add'(el){const v=CE.draft.variants[+el.dataset.i];v.promos=v.promos||[];v.promos.push({label:'',amount:0,type:el.dataset.t});CE.open=CE.open||{};CE.open[el.dataset.i]=true;renderCatalog();},
@@ -884,16 +1026,23 @@ document.addEventListener('change',async e=>{if(!e.target||e.target.id!=='bk-fil
     if(!confirm('Khôi phục sẽ thay thế toàn bộ dữ liệu hiện có trên thiết bị này bằng nội dung file. Tiếp tục?'))return;
     ['catalog','customers','quotes','settings'].forEach(c=>{lsSet('bgia:'+c,JSON.stringify(o.data[c]||{}));lsSet('bgia:seeded:'+c,'1');});lsDel('bgia:draft');location.reload();
   }catch(err){toast('File sao lưu không hợp lệ');}});
+let profT=null;
+document.addEventListener('input',e=>{const t=e.target;if(!CLOUD||!t||!t.dataset||!t.dataset.prof)return;
+  PROFILE=Object.assign({},PROFILE,{[t.dataset.prof]:t.value});S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';refresh();
+  clearTimeout(profT);profT=setTimeout(async()=>{try{await FB.setDoc(FB.doc(FB.db,'staff',ME.uid),{name:PROFILE.name||'',phone:PROFILE.phone||''},{merge:true});toast('Đã lưu');}catch(x){toast('Không lưu được, hãy thử lại');}},900);});
 window.addEventListener('hashchange',()=>setView(location.hash.slice(1)));
 
 /* ---------- start ---------- */
 (async function start(){
+  if(CLOUD)showAuth('load');
   Q=newQuote();
   try{const d=JSON.parse(lsGet('bgia:draft')||'null');if(d&&d._dirty){Q=Object.assign(newQuote(),d);Q.promos=Q.promos||[];Q.otherFees=Q.otherFees||[];}}catch(e){}
   fullRender();setView(location.hash.slice(1));renderHistory();renderCustomers();renderCatalog();renderSettings();updateSync();
   setTimeout(()=>{if(!Object.keys(S.loaded).every(k=>S.loaded[k])){S.timeout=true;updateSync();}},10000);
   await store.init();updateSync();renderBanner();
+  if(CLOUD){if(!await cloudGate())return;if((Q._dirty||Q.id)&&Q._owner!==ME.uid){Q=newQuote();lsDel('bgia:draft');}S.settings.seller=PROFILE.name||'';S.settings.phone=PROFILE.phone||'';renderSettings();renderOwnerFilters();}
   ['catalog','customers','quotes','settings'].forEach(c=>store.watch(c,(l,m,e)=>onSnap(c,l,m,e)));
+  if(CLOUD&&ROLE==='admin')['staff','pending'].forEach(c=>store.watch(c,(l,m,e)=>onSnap(c,l,m,e)));
 })();
 })();
 if('serviceWorker' in navigator&&location.protocol!=='file:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}

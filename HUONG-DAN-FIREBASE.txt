@@ -1,0 +1,25 @@
+BAT DANG NHAP + ADMIN CHO APP BAO GIA (dung Firebase cua Google, mien phi)
+
+Lam 1 lan tai https://console.firebase.google.com (dang nhap bang tai khoan Google).
+
+1. Tao du an
+   - Bam "Tao du an / Create a project", dat ten: bao-gia-hm. Tat Google Analytics. Bam Create.
+2. Bat dang nhap bang email
+   - Menu trai: Build -> Authentication -> Get started -> tab Sign-in method -> Email/Password -> Enable -> Save.
+3. Tao co so du lieu
+   - Build -> Firestore Database -> Create database.
+   - Vi tri chon asia-southeast1 (Singapore). Che do: Production mode. Bam Create.
+4. Dan luat bao mat (quan trong)
+   - Trong Firestore, mo tab Rules. Xoa het noi dung cu.
+   - Mo file firestore.rules trong thu muc app, chep toan bo, dan vao, bam Publish.
+   - Dong co chu 'lynguyenngoc261@gmail.com' la email ADMIN. Neu ban dung email khac, doi lai truoc khi Publish.
+5. Lay cau hinh ket noi
+   - Bam banh rang canh "Project Overview" -> Project settings -> keo xuong "Your apps" -> bam bieu tuong web </>.
+   - Dat ten bat ky, bam Register app. Se hien khoi "const firebaseConfig = {...}". Gui khoi do cho Claude (hoac dan vao file firebase-config.js:  window.FIREBASE_CONFIG = {...};).
+
+SAU KHI CO CAU HINH
+ - Ban dang ky trong app bang email admin, bam link xac nhan trong email, quay lai app bam "Kiem tra lai" -> vao thang voi quyen Admin.
+ - Vao tab "Bang gia" bam "Nap bang gia mau" (1 lan) de nap bang gia va cai dat.
+ - Nhan vien tu dang ky trong app (ten, SDT, email, mat khau). Ban vao tab "Nhan vien" bam "Duyet".
+ - Moi nhan vien chi thay khach va bao gia cua minh. Admin thay tat ca, loc theo nhan vien o Lich su va Khach.
+ - Chi admin sua bang gia va cai dat chung. Nhan vien chi sua ten va SDT cua minh.
