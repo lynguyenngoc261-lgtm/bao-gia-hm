@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ADMIN = các email này (phải đã bấm xác nhận email). Thêm admin khác: thêm email vào danh sách, cách nhau bằng dấu phẩy.
+    // ADMIN = các email này. Thêm admin khác: thêm email vào danh sách, cách nhau bằng dấu phẩy.
+    // Lưu ý: chỉ thêm email mà bạn chắc chắn đã tự đăng ký trong app (để không ai khác chiếm được email đó).
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email_verified == true
         && request.auth.token.email in ['lynguyenngoc261@gmail.com'];
     }
     function isStaff() {
