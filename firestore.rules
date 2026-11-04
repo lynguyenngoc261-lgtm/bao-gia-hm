@@ -6,7 +6,7 @@ service cloud.firestore {
     // Lưu ý: chỉ thêm email mà bạn chắc chắn đã tự đăng ký trong app (để không ai khác chiếm được email đó).
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in ['lynguyenngoc261@gmail.com'];
+        && request.auth.token.email in ['lynguyenngoc261@gmail.com', 'nguyenduyforword@gmail.com'];
     }
     function isStaff() {
       return request.auth != null && (isAdmin()
