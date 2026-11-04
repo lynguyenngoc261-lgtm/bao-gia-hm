@@ -432,6 +432,7 @@ function showAuth(mode,msg){AUTHMODE=mode;const a=$('#auth');a.hidden=false;
   else if(mode==='login')h='<form class="auth-card" id="auth-form" data-m="login">'+logo+'<h2>Đăng nhập</h2><p class="sub">Báo giá xe điện Hoàng Minh WCAR</p>'+f('a-email','Email','email','email@gmail.com','username')+f('a-pass','Mật khẩu','password','','current-password')+'<div class="auth-err" id="a-err">'+esc(msg||'')+'</div><button class="btn primary" type="submit">Đăng nhập</button><button type="button" class="lnk" data-auth="reset">Quên mật khẩu?</button><button type="button" class="lnk" data-auth="to-reg">Chưa có tài khoản? Đăng ký</button></form>';
   else if(mode==='register')h='<form class="auth-card" id="auth-form" data-m="register">'+logo+'<h2>Đăng ký</h2><p class="sub">Sau khi đăng ký, admin sẽ duyệt tài khoản của bạn.</p>'+f('a-name','Họ và tên','text','VD: Nguyễn Văn A','name')+f('a-phone','Số điện thoại / Zalo','tel','09xx xxx xxx','tel')+f('a-email','Email','email','email@gmail.com','username')+f('a-pass','Mật khẩu (từ 6 ký tự)','password','','new-password')+'<div class="auth-err" id="a-err">'+esc(msg||'')+'</div><button class="btn primary" type="submit">Đăng ký</button><button type="button" class="lnk" data-auth="to-login">Đã có tài khoản? Đăng nhập</button></form>';
   else if(mode==='wait')h='<div class="auth-card">'+logo+'<h2>Chờ admin duyệt</h2><p class="sub">Tài khoản <b>'+esc(ME?ME.email:'')+'</b> đã đăng ký. Khi admin duyệt xong, bấm "Kiểm tra lại" để vào app.'+(ME&&!ME.emailVerified?'<br><br>Nếu bạn là admin: mở email xác nhận mà hệ thống đã gửi, bấm vào liên kết, rồi bấm "Kiểm tra lại".':'')+'</p><div class="auth-ok" id="a-ok">'+esc(msg||'')+'</div><button class="btn primary" type="button" data-auth="recheck">Kiểm tra lại</button>'+(ME&&!ME.emailVerified?'<button type="button" class="lnk" data-auth="resend">Gửi lại email xác nhận</button>':'')+'<button type="button" class="lnk" data-auth="out">Đăng xuất</button></div>';
+  else if(mode==='error')h='<div class="auth-card">'+logo+'<h2>Chưa kết nối được</h2><p class="sub">App không kết nối được tới kho dữ liệu Firebase.</p><div class="auth-err" style="text-align:left;word-break:break-word">'+esc(ERRD||'Không rõ nguyên nhân')+'</div><p class="sub" style="margin-top:10px;font-size:13px;text-align:left">Hãy kiểm tra: (1) mạng của bạn; (2) trong Firebase đã bấm Create database ở mục Firestore Database; (3) đã dán luật vào tab Rules và bấm Publish. Gửi dòng chữ đỏ phía trên cho Claude nếu vẫn lỗi.</p><button class="btn primary" type="button" data-auth="reload">Thử lại</button><button type="button" class="lnk" data-auth="out">Đăng xuất</button></div>';
   else if(mode==='off')h='<div class="auth-card">'+logo+'<h2>Tài khoản đã bị tắt</h2><p class="sub">Hãy liên hệ admin để được bật lại.</p><button type="button" class="lnk" data-auth="out">Đăng xuất</button></div>';
   a.innerHTML=h;const first=a.querySelector('input');if(first&&mode!=='load')setTimeout(()=>{if(!a.contains(document.activeElement)||document.activeElement===document.body)first.focus();},30);
 }
@@ -448,42 +449,50 @@ document.addEventListener('submit',async e=>{const fm=e.target;if(!fm||fm.id!=='
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-auth]');if(!b)return;const a=b.dataset.auth;
   if(a==='to-reg')showAuth('register');else if(a==='to-login')showAuth('login');
   else if(a==='reset'){const em=(($('#a-email')||{}).value||'').trim();if(!em){$('#a-err').textContent='Hãy nhập email vào ô trên rồi bấm lại.';return;}try{await FB.sendPasswordResetEmail(FB.auth,em);$('#a-err').style.color='var(--good)';$('#a-err').textContent='Đã gửi email đặt lại mật khẩu.';}catch(err){$('#a-err').textContent=aerr(err);}}
+  else if(a==='reload')location.reload();
   else if(a==='out'){try{await FB.signOut(FB.auth);}catch(x){}location.reload();}
   else if(a==='resend'){try{await FB.sendEmailVerification(FB.auth.currentUser);showAuth('wait','Đã gửi lại email xác nhận.');}catch(err){showAuth('wait',aerr(err));}}
   else if(a==='recheck'){try{await FB.auth.currentUser.reload();await FB.auth.currentUser.getIdToken(true);}catch(x){}ME=FB.auth.currentUser;const r=await resolveRole(ME);if(r==='admin'||r==='staff')location.reload();else showAuth(r==='off'?'off':'wait','Chưa được duyệt hoặc chưa xác nhận email.');}
 });
 const roleKey=u=>'bgia:role:'+u.uid;
+const withTO=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout',message:'quá thời gian chờ'}),ms||12000))]);
+let ERRD='';
 async function resolveRole(u){
   const col=n=>FB.collection(FB.db,n),dc=(n,id)=>FB.doc(FB.db,n,id);
   const cache=()=>{try{return JSON.parse(lsGet(roleKey(u))||'null');}catch(e){return null;}};
   const useCache=c=>{ROLE=c.role;PROFILE=c.profile;return c.role;};
+  const soft=e=>!e||e.code==='unavailable'||e.code==='timeout'||!navigator.onLine;
+  const fail=e=>{const c=cache();if(c&&soft(e))return useCache(c);ERRD=((e&&e.code)||'lỗi')+(e&&e.message?': '+e.message:'');return 'error';};
   // admin? chỉ admin mới đọc được danh sách "pending"
-  let isAdm=false,netErr=false;
-  try{await FB.getDocs(FB.query(col('pending'),FB.limit(1)));isAdm=true;}catch(e){if(e&&(e.code==='unavailable'||!navigator.onLine))netErr=true;}
-  if(netErr){const c=cache();if(c)return useCache(c);}
+  let isAdm=false;
+  try{await withTO(FB.getDocs(FB.query(col('pending'),FB.limit(1))));isAdm=true;}
+  catch(e){if(!e||e.code!=='permission-denied')return fail(e);}
   try{
-    if(isAdm){ROLE='admin';let sd=await FB.getDoc(dc('staff',u.uid));
-      if(!sd.exists()){let pd=null;try{const x=await FB.getDoc(dc('pending',u.uid));if(x.exists())pd=x.data();}catch(e){}
+    if(isAdm){ROLE='admin';let sd=await withTO(FB.getDoc(dc('staff',u.uid)));
+      if(!sd.exists()){let pd=null;try{const x=await withTO(FB.getDoc(dc('pending',u.uid)));if(x.exists())pd=x.data();}catch(e){}
         const prof={name:(pd&&pd.name)||REG.name||u.displayName||(u.email||'').split('@')[0],phone:(pd&&pd.phone)||REG.phone||'',email:u.email||'',active:true,createdAt:new Date().toISOString()};
-        await FB.setDoc(dc('staff',u.uid),prof);try{await FB.deleteDoc(dc('pending',u.uid));}catch(e){}PROFILE=prof;}
+        await withTO(FB.setDoc(dc('staff',u.uid),prof));try{await FB.deleteDoc(dc('pending',u.uid));}catch(e){}PROFILE=prof;}
       else PROFILE=sd.data();
       lsSet(roleKey(u),JSON.stringify({role:'admin',profile:PROFILE}));return 'admin';}
-    const sd=await FB.getDoc(dc('staff',u.uid));
+    const sd=await withTO(FB.getDoc(dc('staff',u.uid)));
     if(sd.exists()){if(sd.data().active){ROLE='staff';PROFILE=sd.data();lsSet(roleKey(u),JSON.stringify({role:'staff',profile:PROFILE}));return 'staff';}return 'off';}
-    const pr=dc('pending',u.uid),pd=await FB.getDoc(pr);
-    if(!pd.exists())await FB.setDoc(pr,{name:REG.name||u.displayName||(u.email||'').split('@')[0],phone:REG.phone||'',email:u.email||'',createdAt:new Date().toISOString()});
+    const pr=dc('pending',u.uid),pd=await withTO(FB.getDoc(pr));
+    if(!pd.exists())await withTO(FB.setDoc(pr,{name:REG.name||u.displayName||(u.email||'').split('@')[0],phone:REG.phone||'',email:u.email||'',createdAt:new Date().toISOString()}));
     return 'pending';
-  }catch(e){const c=cache();if(c&&(!navigator.onLine||(e&&e.code==='unavailable')))return useCache(c);return 'pending';}
+  }catch(e){return fail(e);}
 }
 function applyRole(){document.body.classList.add('role-'+ROLE);const n=$('#nav-staff');if(n)n.hidden=ROLE!=='admin';}
 function cloudGate(){return new Promise(resolve=>{
-  FB.init(window.FIREBASE_CONFIG);let done=false;
+  try{FB.init(window.FIREBASE_CONFIG);}catch(e){ERRD=((e&&e.code)||'init')+': '+((e&&e.message)||e);showAuth('error');return;}
+  let done=false,got=false;
+  setTimeout(()=>{if(!got&&!done){ERRD='Firebase Authentication không phản hồi sau 12 giây (kiểm tra mạng, hoặc Authentication chưa bật).';showAuth('error');}},12000);
   FB.onAuthStateChanged(FB.auth,async u=>{
+    got=true;
     if(!u){ME=null;ROLE=null;PROFILE=null;showAuth('login');return;}
-    ME=u;const r=await resolveRole(u);
+    ME=u;showAuth('load');const r=await resolveRole(u);
     if(r==='admin'||r==='staff'){if(!done){done=true;hideAuth();applyRole();resolve(true);}}
-    else showAuth(r==='off'?'off':'wait');
-  });
+    else showAuth(r==='off'?'off':r==='error'?'error':'wait');
+  },e=>{got=true;ERRD=((e&&e.code)||'auth')+': '+((e&&e.message)||'');showAuth('error');});
 });}
 
 /* ---------- data layer ---------- */
