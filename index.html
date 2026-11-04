@@ -417,7 +417,12 @@ function renderStaff(){
 }
 /* --- giao diện đăng nhập --- */
 const AUTHERR={'auth/invalid-credential':'Email hoặc mật khẩu chưa đúng.','auth/wrong-password':'Email hoặc mật khẩu chưa đúng.','auth/user-not-found':'Email hoặc mật khẩu chưa đúng.','auth/email-already-in-use':'Email này đã được đăng ký. Hãy đăng nhập.','auth/weak-password':'Mật khẩu cần ít nhất 6 ký tự.','auth/invalid-email':'Email chưa đúng định dạng.','auth/too-many-requests':'Thử quá nhiều lần, hãy đợi vài phút rồi thử lại.','auth/network-request-failed':'Không có mạng, hãy kiểm tra kết nối.','auth/missing-password':'Hãy nhập mật khẩu.'};
-const aerr=e=>AUTHERR[e&&e.code]||'Có lỗi xảy ra, hãy thử lại.';
+AUTHERR['auth/operation-not-allowed']='Chưa bật đăng nhập Email/Password trong Firebase (Authentication → Sign-in method).';
+AUTHERR['auth/configuration-not-found']='Firebase Authentication chưa được khởi tạo (vào Authentication, bấm Get started).';
+AUTHERR['auth/api-key-not-valid.-please-pass-a-valid-api-key.']='Khóa API Firebase chưa đúng.';
+AUTHERR['auth/invalid-api-key']='Khóa API Firebase chưa đúng.';
+AUTHERR['auth/unauthorized-domain']='Tên miền này chưa được cho phép trong Firebase (Authentication → Settings → Authorized domains).';
+const aerr=e=>AUTHERR[e&&e.code]||('Có lỗi xảy ra'+(e&&(e.code||e.message)?' ['+(e.code||e.message)+']':'')+', hãy thử lại.');
 let AUTHMODE='load';
 function showAuth(mode,msg){AUTHMODE=mode;const a=$('#auth');a.hidden=false;
   const logo='<img class="al" src="'+LOGO_URL+'" alt="Hoàng Minh WCAR">';
