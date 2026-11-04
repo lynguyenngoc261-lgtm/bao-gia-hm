@@ -1,0 +1,20 @@
+APP BAO GIA HOANG MINH WCAR - HUONG DAN DUA LEN MANG VA CAI VAO MAY
+
+BUOC 1. Dua len mang (lam 1 lan, mien phi)
+ - Giai nen file zip, ra thu muc "bao-gia-hm".
+ - Vao https://app.netlify.com/drop (dang ky tai khoan mien phi neu duoc yeu cau).
+ - Keo ca thu muc "bao-gia-hm" tha vao trang. Netlify cho ban 1 duong dan dang https://ten-gi-do.netlify.app
+ - Dang nhap tai khoan de giu duong dan lau dai. Co the doi ten duong dan trong Site settings.
+
+BUOC 2. Cai len iPhone
+ - Mo duong dan bang Safari -> nut Chia se -> "Them vao Man hinh chinh" -> Them.
+ - Tu nay chi mo app bang bieu tuong tren man hinh chinh (du lieu cua app tren man hinh chinh tach rieng voi Safari).
+
+BUOC 3. Cai len may tinh
+ - Mo duong dan bang Chrome hoac Edge -> bam bieu tuong "Cai dat" o cuoi thanh dia chi (hoac menu -> Cai dat Bao gia HM...).
+ - Chon tao loi tat o Desktop / ghim vao thanh taskbar.
+
+LUU Y
+ - Du lieu (khach, bao gia, bang gia, cai dat) luu rieng tren tung thiet bi. Vao Cai dat -> "Sao luu du lieu" de tai file sao luu, va "Khoi phuc tu file" de chuyen sang thiet bi khac.
+ - Sau lan mo dau tien, app chay duoc ca khi mat mang.
+ - Khi can cap nhat app, tha lai thu muc moi len Netlify (muc Deploys).
