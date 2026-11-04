@@ -396,6 +396,7 @@ const staffName=id=>{const u=S.staff.find(x=>x.id===id);return u?u.name||u.email
 function ownerLabel(r){return staffName(r.ownerId)||r.ownerName||'Không rõ';}
 function ownerTag(r){return(CLOUD&&ROLE==='admin'&&r.ownerId&&ME&&r.ownerId!==ME.uid)?'<div class="qc-sub"><b>Nhân viên: '+esc(ownerLabel(r))+'</b></div>':'';}
 function renderOwnerFilters(){
+  renderExportOwner();
   const show=CLOUD&&ROLE==='admin';
   ['owner-h','owner-c'].forEach(id=>{const el=$('#'+id);if(!el)return;el.hidden=!show;if(!show)return;
     const ids=[];S.staff.forEach(u=>ids.push(u.id));S.quotes.concat(S.customers).forEach(r=>{if(r.ownerId&&!ids.includes(r.ownerId))ids.push(r.ownerId);});
@@ -866,8 +867,28 @@ function renderSettingsFull(){
     +'<div class="field" style="margin-bottom:12px"><label for="s-prov">Tỉnh mặc định cho báo giá mới</label><select id="s-prov" data-act="s-prov"><option value="">Không chọn</option>'+(s.provinces||[]).map(p=>'<option value="'+esc(p.name)+'"'+(p.name===s.province?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +(s.provinces||[]).map((p,i)=>'<div class="erow"><input type="text" aria-label="Tên tỉnh" data-s="provinces.'+i+'.name" data-t="text" value="'+esc(p.name)+'">'+mIn('aria-label="Phí dịch vụ" data-s="provinces.'+i+'.fee"',p.fee)+'<button type="button" class="icon-btn" aria-label="Xóa tỉnh" data-act="prov-rm" data-i="'+i+'">×</button></div>').join('')
     +'<button type="button" class="btn sm" data-act="prov-add">+ Thêm tỉnh</button></section>'
-  +'<section class="card"><h2>Sao lưu dữ liệu</h2><p class="hint" style="margin-bottom:12px">Dữ liệu (khách, báo giá, bảng giá, cài đặt) chỉ lưu trên thiết bị này. Hãy tải bản sao lưu thỉnh thoảng, hoặc để chuyển sang điện thoại / máy tính khác bằng nút Khôi phục.</p><div class="m-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="bk-export">Tải bản sao lưu</button><button type="button" class="btn" data-act="bk-import">Khôi phục từ file</button></div><input type="file" id="bk-file" accept=".json,application/json" hidden></section>';
+  +(CLOUD?exportCardHTML():'<section class="card"><h2>Sao lưu dữ liệu</h2><p class="hint" style="margin-bottom:12px">Dữ liệu (khách, báo giá, bảng giá, cài đặt) chỉ lưu trên thiết bị này. Hãy tải bản sao lưu thỉnh thoảng, hoặc để chuyển sang điện thoại / máy tính khác bằng nút Khôi phục.</p><div class="m-actions" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="bk-export">Tải bản sao lưu</button><button type="button" class="btn" data-act="bk-import">Khôi phục từ file</button></div><input type="file" id="bk-file" accept=".json,application/json" hidden></section>');
 }
+
+/* ---------- trích lục dữ liệu: chỉ admin ---------- */
+function settingsForSave(){const o=clone(S.settings);if(CLOUD){delete o.seller;delete o.phone;}return o;}
+function exportOwnerOptions(){
+  const ids=[];S.staff.forEach(u=>ids.push(u.id));S.quotes.concat(S.customers).forEach(r=>{if(r.ownerId&&!ids.includes(r.ownerId))ids.push(r.ownerId);});
+  return '<option value="all">Tất cả nhân viên</option>'+ids.map(i=>'<option value="'+esc(i)+'">'+esc(i===ME.uid?'Của tôi':(staffName(i)||'Nhân viên khác'))+'</option>').join('');
+}
+function renderExportOwner(){const el=$('#ex-owner');if(!el||!CLOUD||ROLE!=='admin')return;const v=el.value;el.innerHTML=exportOwnerOptions();el.value=[].some.call(el.options,o=>o.value===v)?v:'all';}
+function exportCardHTML(){
+  if(!CLOUD||ROLE!=='admin')return '';
+  return '<section class="card"><h2>Trích lục dữ liệu (chỉ Admin)</h2><p class="hint" style="margin-bottom:12px">Nhân viên chỉ thấy khách và báo giá của chính mình, và không có chức năng trích lục. Chỉ tài khoản admin mới xuất được dữ liệu của cả đội.</p>'
+  +'<div class="field"><label for="ex-owner">Nhân viên</label><select id="ex-owner">'+exportOwnerOptions()+'</select></div>'
+  +'<div class="m-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn" data-act="ex-quotes">Xuất báo giá (Excel)</button><button type="button" class="btn" data-act="ex-customers">Xuất khách hàng (Excel)</button><button type="button" class="btn" data-act="ex-all">Tải toàn bộ (JSON)</button></div></section>';
+}
+const csvCell=v=>{let t=String(v==null?'':v).replace(/\r?\n/g,' ');if(/^[=+\-@\t]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';};
+function csvBlob(head,rows){return new Blob(['﻿sep=;\r\n'+[head].concat(rows).map(r=>r.map(csvCell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});}
+function exportOwner(){const el=$('#ex-owner');return el?el.value:'all';}
+const pickOwner=(arr,o)=>o==='all'?arr:arr.filter(r=>r.ownerId===o);
+const fmtDT=iso=>{const d=iso?new Date(iso):null;return d&&!isNaN(d)?fmtDate(d):'';};
+const stamp=()=>new Date().toISOString().slice(0,10);
 function renderSettings(){
   if(!CLOUD){renderSettingsFull();return;}
   renderSettingsFull();$('#set-form').insertAdjacentHTML('afterbegin',profileCardHTML());
@@ -878,7 +899,7 @@ function profileCardHTML(){const P=PROFILE||{};
   +'<div class="field"><label for="pf-phone">Số điện thoại / Zalo</label><input id="pf-phone" type="tel" data-prof="phone" autocomplete="off" value="'+esc(P.phone||'')+'"></div></div>'
   +'<button type="button" class="btn" style="margin-top:14px" data-act="logout">Đăng xuất</button></section>';}
 let setT=null;
-function queueSettingsSave(){clearTimeout(setT);setT=setTimeout(async()=>{if(await put('settings','main',clone(S.settings)))toast('Đã lưu cài đặt');},900);}
+function queueSettingsSave(){clearTimeout(setT);setT=setTimeout(async()=>{if(await put('settings','main',settingsForSave()))toast('Đã lưu cài đặt');},900);}
 function setPath(o,p,v){const k=p.split('.');let t=o;while(k.length>1)t=t[k.shift()];t[k[0]]=v;}
 
 /* ---------- views / banner / sync ---------- */
@@ -973,8 +994,17 @@ const ACT={
   'ce-add'(el){const a=CE.draft[el.dataset.arr];a.push(el.dataset.arr==='variants'?{name:'',price:0,promos:[]}:{name:'',hex:'#cccccc',extra:0});renderCatalog();},
   'ce-rm'(el){CE.draft[el.dataset.arr].splice(+el.dataset.i,1);renderCatalog();},
   'ce-cancel'(){CE=null;renderCatalog();},
-  'bk-export'(){const o={app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{}};['catalog','customers','quotes','settings'].forEach(c=>{try{o.data[c]=JSON.parse(lsGet('bgia:'+c)||'{}');}catch(e){o.data[c]={};}});saveFile('SaoLuu_BaoGia_'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(o)],{type:'application/json'}));},
-  'bk-import'(){const f=$('#bk-file');if(f)f.click();},
+  'ex-quotes'(){if(!CLOUD||ROLE!=='admin')return;const rows=pickOwner(S.quotes,exportOwner()).slice().sort((x,y)=>String(y.createdAt).localeCompare(String(x.createdAt))).map(r=>[fmtDT(r.createdAt),ownerLabel(r),r.customerName,r.customerPhone,r.carName,r.variantName,r.colorName,r.variantPrice,r.net,r.rolling,r.monthly,(STATUS[r.status]||[r.status])[0],r.note]);
+    if(!rows.length){toast('Chưa có báo giá nào để xuất');return;}
+    saveFile('BaoGia_TrichLuc_'+stamp()+'.csv',csvBlob(['Ngày tạo','Nhân viên','Khách hàng','SĐT','Xe','Phiên bản','Màu','Giá niêm yết','Giá sau ưu đãi','Giá lăn bánh','Trả góp tháng đầu','Trạng thái','Ghi chú'],rows));},
+  'ex-customers'(){if(!CLOUD||ROLE!=='admin')return;const rows=pickOwner(S.customers,exportOwner()).slice().sort((x,y)=>String(x.name).localeCompare(String(y.name),'vi')).map(r=>[r.name,r.phone,r.note,ownerLabel(r),fmtDT(r.createdAt)]);
+    if(!rows.length){toast('Chưa có khách nào để xuất');return;}
+    saveFile('KhachHang_TrichLuc_'+stamp()+'.csv',csvBlob(['Tên khách','SĐT','Ghi chú','Nhân viên','Ngày tạo'],rows));},
+  'ex-all'(){if(!CLOUD||ROLE!=='admin')return;const o=exportOwner(),cat={};S.catalog.forEach(c=>{const b=body(c);cat[c.id]=b;});
+    const pack=arr=>{const m={};pickOwner(arr,o).forEach(r=>{m[r.id]=body(r);});return m;};
+    saveFile('SaoLuu_BaoGia_'+stamp()+'.json',new Blob([JSON.stringify({app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{catalog:cat,customers:pack(S.customers),quotes:pack(S.quotes),settings:{main:body(Object.assign({id:'main'},S.settings))}}})],{type:'application/json'}));},
+  'bk-export'(){if(CLOUD)return;const o={app:'bao-gia-hm',version:1,at:new Date().toISOString(),data:{}};['catalog','customers','quotes','settings'].forEach(c=>{try{o.data[c]=JSON.parse(lsGet('bgia:'+c)||'{}');}catch(e){o.data[c]={};}});saveFile('SaoLuu_BaoGia_'+new Date().toISOString().slice(0,10)+'.json',new Blob([JSON.stringify(o)],{type:'application/json'}));},
+  'bk-import'(){if(CLOUD)return;const f=$('#bk-file');if(f)f.click();},
   async 'seed'(){const sd=SEED_DATA;for(const id of Object.keys(sd.catalog)){if(!await put('catalog',id,sd.catalog[id]))return;}if(!S.settingsExists&&!await put('settings','main',sd.settings.main))return;toast('Đã nạp bảng giá xe cho cả đội');},
   'seed-ask'(el){arm(el,'Bấm lần nữa để nạp lại (ghi đè xe cùng tên)',()=>ACT.seed());},
   async 'logout'(){try{await FB.signOut(FB.auth);}catch(e){}lsDel('bgia:draft');location.reload();},
@@ -1038,7 +1068,7 @@ $('#h-search').addEventListener('input',e=>{H.q=e.target.value;renderHistory();}
 $('#c-search').addEventListener('input',e=>{C.q=e.target.value;renderCustomers();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('#modal').hidden)closeModal();else closePreview();}});
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
-document.addEventListener('change',async e=>{if(!e.target||e.target.id!=='bk-file')return;const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+document.addEventListener('change',async e=>{if(!e.target||e.target.id!=='bk-file'||CLOUD)return;const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
   try{const o=JSON.parse(await f.text());if(!o||o.app!=='bao-gia-hm'||!o.data)throw 0;
     if(!confirm('Khôi phục sẽ thay thế toàn bộ dữ liệu hiện có trên thiết bị này bằng nội dung file. Tiếp tục?'))return;
     ['catalog','customers','quotes','settings'].forEach(c=>{lsSet('bgia:'+c,JSON.stringify(o.data[c]||{}));lsSet('bgia:seeded:'+c,'1');});lsDel('bgia:draft');location.reload();

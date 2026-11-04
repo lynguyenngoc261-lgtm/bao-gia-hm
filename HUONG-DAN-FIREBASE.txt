@@ -23,3 +23,5 @@ SAU KHI CO CAU HINH
  - Nhan vien tu dang ky trong app (ten, SDT, email, mat khau). Ban vao tab "Nhan vien" bam "Duyet".
  - Moi nhan vien chi thay khach va bao gia cua minh. Admin thay tat ca, loc theo nhan vien o Lich su va Khach.
  - Chi admin sua bang gia va cai dat chung. Nhan vien chi sua ten va SDT cua minh.
+ - Chi admin moi 'Trich luc' (xuat Excel/JSON) duoc du lieu: vao tab Cai dat -> 'Trich luc du lieu'. Nhan vien khong co chuc nang nay.
+ - Luat bao mat cho admin yeu cau email da xac nhan (email_verified). Sau khi sua firestore.rules, nho dan lai vao Firestore -> Rules -> Publish.
