@@ -704,7 +704,7 @@ let LOGO_URL='data:image/png;base64,'+LOGO_B64;
 try{const bin=atob(LOGO_B64),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);LOGO_URL=URL.createObjectURL(new Blob([u8],{type:'image/png'}));}catch(e){}
 const LOGO_IMG=new Image();LOGO_IMG.src=LOGO_URL;
 /* ảnh xe: thêm dòng mới = thêm 1 file vào thư mục images/ và 1 dòng ở đây (k = từ khoá trong tên xe, viết thường không dấu) */
-const CAR_IMGS=[{k:'xiaoma',v:'170',src:'images/xiaoma.webp'},{k:'xiaoma',src:'images/xiaoma-bac-xiu.webp'},{k:'bingo',v:'base',src:'images/bingo.webp'},{k:'bingo',v:'plus',src:'images/bingo-plus.webp'},{k:'bingo',v:'max',src:'images/bingo-plus.webp'}];
+const CAR_IMGS=[{k:'xiaoma',v:'170',src:'images/xiaoma.webp'},{k:'xiaoma',src:'images/xiaoma-bac-xiu.webp'},{k:'bingo',v:'base',src:'images/bingo.webp'},{k:'bingo',v:'plus',src:'images/bingo.webp'},{k:'bingo',v:'max',src:'images/bingo-max.webp'}];
 const CAR_IMG_CACHE={};
 function carImgSrc(name,variant){const nm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();const n=nm(name),v=nm(variant);const f=CAR_IMGS.find(x=>n.indexOf(x.k)>=0&&(!x.v||v.indexOf(x.v)>=0));return f?f.src:'';}
 function carImgObj(src){if(!src)return null;if(!CAR_IMG_CACHE[src]){const i=new Image();i.src=src;CAR_IMG_CACHE[src]=i;}return CAR_IMG_CACHE[src];}
