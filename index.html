@@ -293,6 +293,7 @@ select.st-off{background:var(--bad-soft);color:var(--bad)}
               <button class="btn primary" type="button" id="btn-save" data-act="save-quote">Lưu báo giá</button>
               <button class="btn" type="button" data-act="export-img">Ảnh gửi Zalo</button>
               <button class="btn" type="button" data-act="export-pdf">Tải PDF</button>
+              <button class="btn" type="button" data-act="download-png" style="grid-column:1/-1">Tải ảnh PNG về máy</button>
               <button class="btn" type="button" data-act="copy-text" style="grid-column:1/-1">Sao chép nội dung chữ</button>
             </div>
           </div>
@@ -769,17 +770,20 @@ function drawQuote(d,ctx,W,draw){
   return y+52;
 }
 async function loadFonts(){try{await Promise.all([['400','Be Vietnam Pro'],['500','Be Vietnam Pro'],['600','Be Vietnam Pro'],['700','Be Vietnam Pro'],['700','Barlow Condensed']].map(f=>document.fonts.load(f[0]+' 24px "'+f[1]+'"','Ăâđêôơư ấầẩẫậ 0123456789')));}catch(e){}}
-async function makeCanvas(){
+async function makeCanvas(sc){sc=sc||1;
   const c=calc(Q),d=buildDoc(Q,c);if(d.empty){toast('Chọn xe trước khi xuất báo giá');return null;}
   await loadFonts();try{await LOGO_IMG.decode();}catch(e){}{const ci=carImgObj(d.car.img);if(ci){try{await ci.decode();}catch(e){}}}const W=1080,m=document.createElement('canvas').getContext('2d');
-  const H=Math.ceil(drawQuote(d,m,W,false));const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-  const ctx=cv.getContext('2d');ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,W,H);drawQuote(d,ctx,W,true);return {cv,d};
+  const H=Math.ceil(drawQuote(d,m,W,false));const cv=document.createElement('canvas');cv.width=W*sc;cv.height=H*sc;
+  const ctx=cv.getContext('2d');ctx.scale(sc,sc);ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,W,H);drawQuote(d,ctx,W,true);return {cv,d};
 }
 const fileName=ext=>'BaoGia_'+(slug(Q.customerName)||'Khach')+'_'+(slug(Q.carName)||'Xe')+'_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.'+ext;
 async function getDL(){if(DL)return DL;try{DL=window.claude&&window.claude.use?await window.claude.use('downloads'):null;}catch(e){DL=null;}return DL;}
+const IS_MOBILE=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function downloadBlob(blob,filename){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=filename;a.rel='noopener';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},60000);}
 async function saveFile(filename,blob){const dl=await getDL();if(!dl){
-    try{const file=new File([blob],filename,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:filename});return;}}catch(e){if(e&&e.name==='AbortError')return;}
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);toast('Đã tải file');return;}
+    /* Điện thoại: mở bảng chia sẻ (Zalo, Lưu vào Ảnh...). Máy tính: tải thẳng về thư mục Tải xuống. */
+    if(IS_MOBILE){try{const file=new File([blob],filename,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:filename});return;}}catch(e){if(e&&e.name==='AbortError')return;}}
+    downloadBlob(blob,filename);toast(IS_MOBILE?'Đã tải file':'Đã tải '+filename+' về thư mục Tải xuống');return;}
   try{await dl.save({filename,data:blob});toast('Đã lưu file');}catch(e){if(e&&e.code!=='declined')toast('Không lưu được file');}}
 
 /* ---------- modal ---------- */
@@ -1079,14 +1083,16 @@ const ACT={
   'open-preview'(){openPreview();},'close-preview'(){closePreview();},
   'save-quote'(){saveQuote();},
   async 'export-img'(){const r=await makeCanvas();if(!r)return;MODAL={cv:r.cv};
-    openModal('<h3>Ảnh báo giá</h3><p class="hint">Trên điện thoại, nhấn giữ vào ảnh để lưu hoặc chia sẻ sang Zalo.</p><img id="m-img" alt="Bảng báo giá gửi khách"><div class="m-actions"><button type="button" class="btn primary" data-act="save-png">Tải ảnh về máy</button><button type="button" class="btn" data-act="close-modal">Đóng</button></div>');
+    openModal('<h3>Ảnh báo giá</h3><p class="hint">'+(IS_MOBILE?'Nhấn giữ vào ảnh để lưu, hoặc bấm nút bên dưới để chia sẻ sang Zalo.':'Bấm "Tải ảnh về máy" để lưu vào thư mục Tải xuống.')+'</p><img id="m-img" alt="Bảng báo giá gửi khách"><div class="m-actions"><button type="button" class="btn primary" data-act="save-png">Tải ảnh về máy</button><button type="button" class="btn" data-act="close-modal">Đóng</button></div>');
     $('#m-img').src=r.cv.toDataURL('image/png');},
   'save-png'(){if(!MODAL.cv)return;MODAL.cv.toBlob(b=>{if(b)saveFile(fileName('png'),b);},'image/png');},
+  async 'download-png'(){toast('Đang tạo ảnh…');const r=await makeCanvas(2);if(!r)return;r.cv.toBlob(b=>{if(b)saveFile(fileName('png'),b);else toast('Không tạo được ảnh');},'image/png');},
   async 'export-pdf'(){
     if(!(window.jspdf&&window.jspdf.jsPDF)){toast('Chưa tải được công cụ tạo PDF, hãy dùng Ảnh gửi Zalo');return;}
-    const r=await makeCanvas();if(!r)return;const cv=r.cv,pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),pw=210,ph=297,mg=8,aw=pw-2*mg,ah=ph-2*mg;
+    toast('Đang tạo PDF…');
+    const r=await makeCanvas(2);if(!r)return;const cv=r.cv,pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),pw=210,ph=297,mg=6,aw=pw-2*mg,ah=ph-2*mg;
     let w=aw,h=aw*cv.height/cv.width;if(h>ah){h=ah;w=ah*cv.width/cv.height;}
-    pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(pw-w)/2,mg,w,h);saveFile(fileName('pdf'),pdf.output('blob'));},
+    pdf.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',(pw-w)/2,mg,w,h,undefined,'FAST');saveFile(fileName('pdf'),pdf.output('blob'));},
   'copy-text'(){const d=buildDoc(Q,calc(Q));if(d.empty){toast('Chọn xe trước khi sao chép');return;}copyText(docText(d));},
   'copy'(el){copyText(el.dataset.copy);},
   'close-modal'(){closeModal();},
