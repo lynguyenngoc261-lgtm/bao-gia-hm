@@ -626,7 +626,7 @@ function newQuote(){const f=S.settings.fees,l=S.settings.loan;
   return {id:null,createdAt:null,status:'moi',customerId:null,customerName:'',customerPhone:'',
     catalogId:null,carName:'',carSpec:'',variantName:'',variantPrice:0,colorName:'',colorExtra:0,promos:[],promosAuto:false,
     regOn:true,plateZone:f.plateZone,plate:f.plate,inspection:f.inspection,road:f.road,tnds:f.tnds,province:S.settings.province||'',service:provFee(S.settings.province,f.service||0),mica:f.mica||0,regRate:f.regRate,
-    bhvcOn:false,bhvcRate:f.bhvcRate,otherFees:[],loanOn:false,downPct:l.downPct,years:l.years,rate:l.rate,method:l.method,
+    bhvcOn:false,bhvcRate:f.bhvcRate,otherFees:[],loanOn:false,downPct:l.downPct,downAmt:0,years:l.years,rate:l.rate,method:l.method,
     note:'',validDays:S.settings.validDays,_dirty:false};}
 
 /* ---------- calculation ---------- */
@@ -641,11 +641,12 @@ function calc(q){
   const fees=reg+(ro?(+q.plate||0)+(+q.inspection||0)+(+q.road||0)+(+q.tnds||0)+(+q.service||0)+(+q.mica||0):0)+bhvc+other;
   let loan=null;
   if(q.loanOn){
-    const down=Math.round(list*(+q.downPct||0)/100),P=Math.max(0,net-down),n=Math.max(1,Math.round((+q.years||0)*12)),r=(+q.rate||0)/100/12;
+    const down=(+q.downAmt>0)?Math.min(Math.round(+q.downAmt),list):Math.round(list*(+q.downPct||0)/100),P=Math.max(0,net-down),n=Math.max(1,Math.round((+q.years||0)*12)),r=(+q.rate||0)/100/12;
     let first,last,interest;
     if(q.method==='deu'){const pmt=r===0?P/n:P*r/(1-Math.pow(1+r,-n));first=last=pmt;interest=pmt*n-P;}
     else{first=P/n+P*r;last=P/n+(P/n)*r;interest=P*r*(n+1)/2;}
-    loan={down,P,n,first,last,interest,upfront:down+fees};
+    const dp=list>0?Math.round(down/list*10000)/100:0;
+    loan={down,dp,vp:Math.round((100-dp)*100)/100,P,n,first,last,interest,upfront:down+fees};
   }
   return {list,discounts,net,reg,bhvc,other,fees,rolling:net+fees,loan};
 }
@@ -671,7 +672,7 @@ function buildDoc(q,c){
   const gifts=q.promos.filter(p=>p.type==='gift'&&p.label);
   if(gifts.length)blocks2.push({title:'Quà tặng kèm',rows:gifts.map(p=>({l:p.label,v:p.amount>0?'Trị giá '+money(p.amount):''}))});
   if(c.loan){const L=c.loan,rows=[
-    {l:'Trả trước ('+pct(q.downPct)+'%)',v:money(L.down)},{l:'Số tiền vay',v:money(L.P)},
+    {l:'Trả trước ('+pct(L.dp)+'% giá niêm yết)',v:money(L.down)},{l:'Tỷ lệ vay',v:pct(L.vp)+'% giá niêm yết'},{l:'Số tiền vay',v:money(L.P)},
     {l:'Thời hạn · lãi suất',v:q.years+' năm · '+pct(q.rate)+'%/năm'},{l:'Hình thức',v:METHODS[q.method]||''}];
     if(q.method==='deu')rows.push({l:'Trả hàng tháng',v:money(L.first),k:'big'});
     else{rows.push({l:'Trả tháng đầu',v:money(L.first),k:'big'});rows.push({l:'Trả tháng cuối',v:money(L.last)});}
@@ -838,7 +839,7 @@ function renderQuoteForm(){
     +'<button type="button" class="btn" data-act="add-fee">+ Thêm chi phí</button>'
     +'<div class="sumline"><span>Tổng chi phí lăn bánh</span><b id="o-fees">0 ₫</b></div></section>');
   h.push('<section class="card"><div class="card-h"><h2>Trả góp</h2><label class="sw" for="q-loan"><input type="checkbox" id="q-loan" data-q="loanOn" data-t="bool" data-re="1"'+(Q.loanOn?' checked':'')+'><span>Đưa vào báo giá</span></label></div>'
-    +(Q.loanOn?'<div class="grid2"><div class="field"><label for="q-down">Trả trước (% giá niêm yết)</label>'+nIn('id="q-down" data-q="downPct"',Q.downPct)+'</div><div class="field"><label for="q-years">Thời hạn vay (năm)</label>'+nIn('id="q-years" data-q="years"',Q.years)+'</div>'
+    +(Q.loanOn?'<div class="grid2"><div class="field"><label for="q-down">Trả trước (% giá niêm yết)</label>'+nIn('id="q-down" data-q="downPct"',Q.downAmt>0&&calc(Q).loan?calc(Q).loan.dp:Q.downPct)+'</div><div class="field"><label for="q-down-amt">Hoặc nhập số tiền trả trước (đ)</label>'+mIn('id="q-down-amt" data-q="downAmt"',Q.downAmt>0?Q.downAmt:(calc(Q).loan?calc(Q).loan.down:0),'Nhập số tiền')+'</div><div class="field" style="grid-column:1/-1"><p class="hint" id="down-hint" style="margin:0"></p></div><div class="field"><label for="q-years">Thời hạn vay (năm)</label>'+nIn('id="q-years" data-q="years"',Q.years)+'</div>'
       +'<div class="field"><label for="q-rate">Lãi suất (%/năm)</label>'+nIn('id="q-rate" data-q="rate"',Q.rate)+'</div><div class="field"><label for="q-method">Cách tính</label><select id="q-method" data-act="method">'+Object.keys(METHODS).map(k=>'<option value="'+k+'"'+(k===Q.method?' selected':'')+'>'+METHODS[k]+'</option>').join('')+'</select></div></div><div class="res" id="loan-out"></div>'
       :'<p class="hint">Bật để thêm phương án vay vào bảng báo giá. Lãi suất và thời hạn lấy mặc định trong Cài đặt.</p>')+'</section>');
   h.push('<section class="card"><h2>Ghi chú</h2><div class="field"><label for="q-note">Ghi chú hiện trên báo giá</label><textarea id="q-note" rows="3" data-q="note" placeholder="VD: Giao xe dự kiến sau 15 ngày. Giá có thể đổi theo chương trình hãng.">'+esc(Q.note)+'</textarea></div>'
@@ -848,13 +849,17 @@ function renderQuoteForm(){
 }
 function fillCustList(){const dl=$('#dl-cust');if(dl)dl.innerHTML=S.customers.map(c=>'<option value="'+esc(c.name)+'"></option>').join('');}
 const setText=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+function syncDown(src){const L=calc(Q).loan;if(!L)return;const a=$('#q-down-amt'),p=$('#q-down');
+  if(src==='downPct'&&a)a.value=L.down?dots(L.down):'';
+  if(src==='downAmt'&&p){p.value=String(L.dp).replace('.',',');Q.downPct=L.dp;}}
 function refresh(){
   const c=calc(Q),d=buildDoc(Q,c);
   $('#paper').innerHTML=paperHTML(d);
   setText('sum-total',hasCar(Q)?money(c.rolling):'—');
   setText('o-reg',money(c.reg));setText('o-bhvc',money(c.bhvc));setText('o-fees',money(c.fees));
   const lo=document.getElementById('loan-out');
-  if(lo&&c.loan){const L=c.loan;lo.innerHTML='<div><span>Số tiền vay</span><b>'+money(L.P)+'</b></div><div><span>Trả trước</span><b>'+money(L.down)+'</b></div>'
+  const dh=document.getElementById('down-hint');if(dh&&c.loan)dh.textContent='Trả trước '+pct(c.loan.dp)+'% · Vay '+pct(c.loan.vp)+'% giá niêm yết';
+  if(lo&&c.loan){const L=c.loan;lo.innerHTML='<div><span>Số tiền vay</span><b>'+money(L.P)+'</b></div><div><span>Trả trước ('+pct(L.dp)+'%)</span><b>'+money(L.down)+'</b></div><div><span>Tỷ lệ vay</span><b>'+pct(L.vp)+'% niêm yết</b></div>'
     +'<div class="hl"><span>'+(Q.method==='deu'?'Trả hàng tháng':'Trả tháng đầu')+'</span><b>'+money(L.first)+'</b></div><div><span>Tổng lãi dự kiến</span><b>'+money(L.interest)+'</b></div>'
     +'<div class="wide"><span>Cần chuẩn bị ban đầu (trả trước + chi phí lăn bánh)</span><b>'+money(L.upfront)+'</b></div>';}
   const sv=$('#btn-save');if(sv)sv.textContent=Q.id?'Cập nhật báo giá':'Lưu báo giá';
@@ -1176,7 +1181,9 @@ document.addEventListener('change',e=>{
 $('#qform').addEventListener('input',e=>{
   const t=e.target,d=t.dataset;if(!d||t.type==='checkbox')return;
   if(d.q){Q[d.q]=readVal(t);if(d.q==='customerName'||d.q==='customerPhone')Q.customerId=null;
-    if(d.q==='service'){Q.province='';const ps=$('#q-prov');if(ps)ps.value='';}touch();refresh();}
+    if(d.q==='service'){Q.province='';const ps=$('#q-prov');if(ps)ps.value='';}
+    if(d.q==='downPct')Q.downAmt=0;
+    touch();refresh();if(d.q==='downPct'||d.q==='downAmt')syncDown(d.q);}
   else if(d.arr){const o=Q[d.arr][+d.i];if(o){o[d.f]=readVal(t);if(d.arr==='promos')Q.promosAuto=false;touch();refresh();}}
 });
 $('#cat-list').addEventListener('input',e=>{
