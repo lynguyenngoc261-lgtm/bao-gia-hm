@@ -866,9 +866,11 @@ function refresh(){
 }
 let draftT=null;
 function touch(){Q._dirty=true;if(CLOUD&&ME)Q._owner=ME.uid;clearTimeout(draftT);draftT=setTimeout(()=>lsSet('bgia:draft',JSON.stringify(Q)),600);}
-function applyPromos(v){if(!v)return;if(!Q.promos.length||Q.promosAuto){Q.promos=clone(v.promos||[]);Q.promosAuto=true;}}
-function selectModel(id){const car=catById(id);if(!car)return;Q.catalogId=id;Q.carName=(car.brand+' '+car.model).trim();Q.carSpec=car.spec||'';
-  const v=car.variants[0];Q.variantName=v?v.name:'';Q.variantPrice=v?v.price:0;const co=car.colors[0];Q.colorName=co?co.name:'';Q.colorExtra=co?(co.extra||0):0;applyPromos(v);}
+/* Ưu đãi & quà tặng mỗi dòng xe/phiên bản mỗi khác: đổi xe hoặc phiên bản thì luôn nạp lại theo xe mới.
+   Trả về true nếu đã ghi đè các dòng người dùng tự chỉnh, để báo cho họ biết. */
+function applyPromos(v){if(!v)return false;const overwrote=Q.promos.length>0&&!Q.promosAuto;Q.promos=clone(v.promos||[]);Q.promosAuto=true;return overwrote;}
+function selectModel(id){const car=catById(id);if(!car)return false;Q.catalogId=id;Q.carName=(car.brand+' '+car.model).trim();Q.carSpec=car.spec||'';
+  const v=car.variants[0];Q.variantName=v?v.name:'';Q.variantPrice=v?v.price:0;const co=car.colors[0];Q.colorName=co?co.name:'';Q.colorExtra=co?(co.extra||0):0;return applyPromos(v);}
 function ensureSelection(){if(!Q.catalogId&&!Q.carName&&S.catalog.length)selectModel(S.catalog[0].id);}
 function fullRender(){renderQuoteForm();refresh();}
 
@@ -1077,7 +1079,7 @@ function readVal(t){
 }
 const ACT={
   'new-quote'(el){const go=()=>{Q=newQuote();ensureSelection();lsDel('bgia:draft');fullRender();window.scrollTo(0,0);};if(Q._dirty&&!Q.id)arm(el,'Bấm lần nữa để bỏ bản đang soạn',go);else go();},
-  'variant'(el){const v=catById(Q.catalogId).variants[+el.dataset.i];Q.variantName=v.name;Q.variantPrice=v.price;applyPromos(v);touch();fullRender();},
+  'variant'(el){const v=catById(Q.catalogId).variants[+el.dataset.i];Q.variantName=v.name;Q.variantPrice=v.price;const over=applyPromos(v);touch();fullRender();if(over)toast('Đã nạp lại ưu đãi & quà tặng theo phiên bản '+v.name);},
   'color'(el){const co=catById(Q.catalogId).colors[+el.dataset.i];Q.colorName=co.name;Q.colorExtra=co.extra||0;touch();fullRender();},
   'add-promo'(el){Q.promosAuto=false;Q.promos.push({label:'',amount:0,type:el.dataset.t});touch();renderQuoteForm();refresh();const l=$$('#qform .promo .p-l');if(l.length)l[l.length-1].focus();},
   'preset'(el){Q.promosAuto=false;const p=PRESETS[+el.dataset.i];Q.promos.push({label:p[0],amount:0,type:p[1]});touch();renderQuoteForm();refresh();const a=$$('#qform .promo .money');if(a.length)a[a.length-1].focus();},
@@ -1166,7 +1168,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target,a=t.dataset&&t.dataset.act;
-  if(a==='model'){selectModel(t.value);touch();fullRender();}
+  if(a==='model'){const over=selectModel(t.value);touch();fullRender();if(over)toast('Đã nạp lại ưu đãi & quà tặng theo xe mới');}
   else if(a==='zone'){Q.plateZone=t.value;Q.plate=ZONES[t.value].fee;touch();renderQuoteForm();refresh();}
   else if(a==='method'){Q.method=t.value;touch();refresh();}
   else if(a==='prov'){Q.province=t.value;if(t.value)Q.service=provFee(t.value,Q.service);touch();renderQuoteForm();refresh();}
