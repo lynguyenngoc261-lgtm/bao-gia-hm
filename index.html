@@ -624,7 +624,7 @@ function provFee(n,fb){const p=(S.settings.provinces||[]).find(x=>x.name===n);re
 function newQuote(){const f=S.settings.fees,l=S.settings.loan;
   return {id:null,createdAt:null,status:'moi',customerId:null,customerName:'',customerPhone:'',
     catalogId:null,carName:'',carSpec:'',variantName:'',variantPrice:0,colorName:'',colorExtra:0,promos:[],promosAuto:false,
-    plateZone:f.plateZone,plate:f.plate,inspection:f.inspection,road:f.road,tnds:f.tnds,province:S.settings.province||'',service:provFee(S.settings.province,f.service||0),mica:f.mica||0,regRate:f.regRate,
+    regOn:true,plateZone:f.plateZone,plate:f.plate,inspection:f.inspection,road:f.road,tnds:f.tnds,province:S.settings.province||'',service:provFee(S.settings.province,f.service||0),mica:f.mica||0,regRate:f.regRate,
     bhvcOn:false,bhvcRate:f.bhvcRate,otherFees:[],loanOn:false,downPct:l.downPct,years:l.years,rate:l.rate,method:l.method,
     note:'',validDays:S.settings.validDays,_dirty:false};}
 
@@ -633,10 +633,11 @@ function calc(q){
   const list=Math.max(0,(+q.variantPrice||0)+(+q.colorExtra||0));
   const discounts=q.promos.filter(p=>p.type==='discount').reduce((a,p)=>a+(+p.amount||0),0);
   const net=Math.max(0,list-discounts);
-  const reg=Math.round(list*(+q.regRate||0)/100);
+  const ro=q.regOn!==false;
+  const reg=ro?Math.round(list*(+q.regRate||0)/100):0;
   const bhvc=q.bhvcOn?Math.round(list*(+q.bhvcRate||0)/100):0;
   const other=q.otherFees.reduce((a,f)=>a+(+f.amount||0),0);
-  const fees=reg+(+q.plate||0)+(+q.inspection||0)+(+q.road||0)+(+q.tnds||0)+(+q.service||0)+(+q.mica||0)+bhvc+other;
+  const fees=reg+(ro?(+q.plate||0)+(+q.inspection||0)+(+q.road||0)+(+q.tnds||0)+(+q.service||0)+(+q.mica||0):0)+bhvc+other;
   let loan=null;
   if(q.loanOn){
     const down=Math.round(list*(+q.downPct||0)/100),P=Math.max(0,net-down),n=Math.max(1,Math.round((+q.years||0)*12)),r=(+q.rate||0)/100/12;
@@ -658,12 +659,13 @@ function buildDoc(q,c){
   if(q.colorExtra>0)r1.push({l:'Phụ thu màu '+(q.colorName||''),v:money(q.colorExtra)});
   q.promos.filter(p=>p.type==='discount'&&p.amount>0).forEach(p=>r1.push({l:p.label||'Ưu đãi',v:'− '+money(p.amount),k:'disc'}));
   if(c.discounts>0||q.colorExtra>0)r1.push({l:'Giá xe sau ưu đãi',v:money(c.net),k:'strong'});
-  const r2=[{l:'Lệ phí trước bạ'+(q.regRate>0?' ('+pct(q.regRate)+'%)':''),v:c.reg>0?money(c.reg):'Miễn',k:c.reg>0?'':'free'}];
+  const ro=q.regOn!==false,r2=[];
+  if(ro)r2.push({l:'Lệ phí trước bạ'+(q.regRate>0?' ('+pct(q.regRate)+'%)':''),v:c.reg>0?money(c.reg):'Miễn',k:c.reg>0?'':'free'});
   const add=(l,v)=>{if(v>0)r2.push({l,v:money(v)});};
-  add('Phí đăng ký biển số',+q.plate);add('Phí đăng kiểm',+q.inspection);add('Phí sử dụng đường bộ (1 năm)',+q.road);add('Bảo hiểm TNDS bắt buộc',+q.tnds);add('Phí dịch vụ đăng ký xe'+(q.province?' ('+q.province+')':''),+q.service);add('Ép biển số mica',+q.mica);
+  if(ro){add('Phí đăng ký biển số',+q.plate);add('Phí đăng kiểm',+q.inspection);add('Phí sử dụng đường bộ (1 năm)',+q.road);add('Bảo hiểm TNDS bắt buộc',+q.tnds);add('Phí dịch vụ đăng ký xe'+(q.province?' ('+q.province+')':''),+q.service);add('Ép biển số mica',+q.mica);}
   if(q.bhvcOn)add('Bảo hiểm thân vỏ ('+pct(q.bhvcRate)+'% giá niêm yết)',c.bhvc);
   q.otherFees.forEach(f=>add(f.label||'Chi phí khác',+f.amount));
-  const blocks1=[{title:'Giá xe',rows:r1},{title:'Chi phí lăn bánh',rows:r2}];
+  const blocks1=[{title:'Giá xe',rows:r1}];if(r2.length)blocks1.push({title:ro?'Chi phí lăn bánh':'Chi phí khác',rows:r2});
   const blocks2=[];
   const gifts=q.promos.filter(p=>p.type==='gift'&&p.label);
   if(gifts.length)blocks2.push({title:'Quà tặng kèm',rows:gifts.map(p=>({l:p.label,v:p.amount>0?'Trị giá '+money(p.amount):''}))});
@@ -811,7 +813,8 @@ function renderQuoteForm(){
       +'<div class="p-act"><div class="seg"><button type="button" data-act="promo-type" data-i="'+i+'" data-t="discount" class="'+(p.type==='discount'?'on':'')+'">Giảm giá</button><button type="button" data-act="promo-type" data-i="'+i+'" data-t="gift" class="'+(p.type==='gift'?'on':'')+'">Quà tặng</button></div><button type="button" class="icon-btn" aria-label="Xóa dòng này" data-act="rm-promo" data-i="'+i+'">×</button></div></div>').join(''):'<p class="hint">Chưa có ưu đãi nào. Chạm vào gợi ý bên dưới hoặc thêm dòng mới.</p>')
     +'<div class="chips">'+PRESETS.map((p,i)=>'<button type="button" class="chip" data-act="preset" data-i="'+i+'">+ '+esc(p[0])+'</button>').join('')+'</div>'
     +'<div class="row-actions"><button type="button" class="btn" data-act="add-promo" data-t="discount">+ Dòng giảm giá</button><button type="button" class="btn" data-act="add-promo" data-t="gift">+ Dòng quà tặng</button></div></section>');
-  h.push('<section class="card"><h2>Chi phí lăn bánh</h2>'
+  h.push('<section class="card"><div class="card-h"><h2>Chi phí lăn bánh</h2><label class="sw" for="q-reg-on"><input type="checkbox" id="q-reg-on" data-q="regOn" data-t="bool" data-re="1"'+(Q.regOn!==false?' checked':'')+'><span>Tính phí đăng ký xe</span></label></div>'
+    +(Q.regOn===false?'<p class="hint" style="margin-bottom:8px">Đã tắt: báo giá không có trước bạ, biển số, đăng kiểm, phí đường bộ, TNDS, phí dịch vụ và ép biển. Bật lại để nhập.</p>':'<div>'
     +'<div class="frow"><label for="q-reg">Lệ phí trước bạ<small>Tính trên giá niêm yết. Ô tô điện đang được miễn đến 28/02/2027, sau mốc này hãy kiểm tra quy định mới.</small></label><div class="inl">'+nIn('id="q-reg" data-q="regRate"',Q.regRate)+'<span class="unit">%</span></div></div>'
     +'<div class="fcalc">Thành tiền <b id="o-reg">0 ₫</b></div>'
     +'<div class="frow"><label for="q-zone">Khu vực đăng ký biển số</label><select id="q-zone" data-act="zone">'+Object.keys(ZONES).map(k=>'<option value="'+k+'"'+(k===Q.plateZone?' selected':'')+'>'+esc(ZONES[k].label)+'</option>').join('')+'</select></div>'
@@ -822,7 +825,7 @@ function renderQuoteForm(){
     +'<div class="frow"><label for="q-prov">Tỉnh đăng ký xe<small>Chọn tỉnh để tự điền phí dịch vụ</small></label><select id="q-prov" data-act="prov"><option value="">Tự nhập</option>'
       +(S.settings.provinces||[]).map(p=>'<option value="'+esc(p.name)+'"'+(p.name===Q.province?' selected':'')+'>'+esc(p.name)+' · '+dots(p.fee)+'</option>').join('')+'</select></div>'
     +'<div class="frow"><label for="q-svc">Phí dịch vụ đăng ký xe</label>'+mIn('id="q-svc" data-q="service"',Q.service)+'</div>'
-    +'<div class="frow"><label for="q-mica">Ép biển số mica</label>'+mIn('id="q-mica" data-q="mica"',Q.mica)+'</div>'
+    +'<div class="frow"><label for="q-mica">Ép biển số mica</label>'+mIn('id="q-mica" data-q="mica"',Q.mica)+'</div></div>')
     +'<div class="frow"><label class="sw" for="q-bhvc"><input type="checkbox" id="q-bhvc" data-q="bhvcOn" data-t="bool" data-re="1"'+(Q.bhvcOn?' checked':'')+'><span>Bảo hiểm vật chất<small>Luôn tính trên giá niêm yết, không trừ ưu đãi</small></span></label>'
     +(Q.bhvcOn?'<div class="inl">'+nIn('aria-label="Tỷ lệ bảo hiểm vật chất" data-q="bhvcRate"',Q.bhvcRate)+'<span class="unit">%</span></div>':'<span class="dim">Không tính</span>')+'</div>'
     +(Q.bhvcOn?'<div class="fcalc">Thành tiền <b id="o-bhvc">0 ₫</b></div>':'')
