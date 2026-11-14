@@ -674,7 +674,7 @@ function buildDoc(q,c){
   if(gifts.length)blocks2.push({title:'Quà tặng kèm',rows:gifts.map(p=>({l:p.label,v:p.amount>0?'Trị giá '+money(p.amount):''}))});
   if(c.loan){const L=c.loan,rows=[
     {l:'Trả trước ('+pct(L.dp)+'% giá niêm yết)',v:money(L.down)},{l:'Tỷ lệ vay',v:pct(L.vp)+'% giá niêm yết'},{l:'Số tiền vay',v:money(L.P)},
-    {l:'Thời hạn · lãi suất',v:q.years+' năm · '+pct(q.rate)+'%/năm'},{l:'Hình thức',v:METHODS[q.method]||''}];
+    {l:'Thời hạn · lãi suất',v:q.years+' năm · '+pct(q.rate)+'%/năm'}];
     if(q.method==='deu')rows.push({l:'Trả hàng tháng',v:money(L.first),k:'big'});
     else{rows.push({l:'Trả tháng đầu',v:money(L.first),k:'big'});rows.push({l:'Trả tháng cuối',v:money(L.last)});}
     rows.push({l:'Tổng lãi dự kiến',v:money(L.interest)});
